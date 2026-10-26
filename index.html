@@ -3,31 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Confirmation Navette TAYAL</title>
+    <title>Confirmation Navettes TAYAL</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f9f9f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: white; padding: 35px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: center; width: 100%; max-width: 400px; border-top: 5px solid #003366; }
-        h2 { color: #003366; margin-top: 0; margin-bottom: 5px; font-size: 24px; }
-        .subtitle { color: #888; font-size: 14px; margin-bottom: 25px; }
-        .choix-badge { background: #FF9800; color: white; padding: 8px 20px; border-radius: 20px; font-weight: bold; display: inline-block; margin-bottom: 20px; font-size: 16px; }
-        #loading { color: #003366; font-weight: bold; margin-bottom: 15px; }
-        #success-msg { color: #4CAF50; font-weight: bold; display: none; font-size: 16px; }
-        #error-msg { color: #F44336; font-weight: bold; display: none; font-size: 15px; }
-        #warning-msg { color: #FF9800; font-weight: bold; display: none; font-size: 15px; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #f4f6f9; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+        }
+        .card { 
+            background: white; 
+            padding: 40px 35px; 
+            border-radius: 12px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05); 
+            text-align: center; 
+            width: 100%; 
+            max-width: 440px; 
+            border-top: 6px solid #003366; 
+            box-sizing: border-box;
+        }
+        .logo {
+            max-height: 85px;
+            margin-bottom: 20px;
+            object-fit: contain;
+        }
+        h2 { 
+            color: #003366; 
+            margin-top: 0; 
+            margin-bottom: 8px; 
+            font-size: 20px; 
+            font-weight: 800;
+            letter-spacing: 0.5px;
+        }
+        .subtitle { 
+            color: #666666; 
+            font-size: 14px; 
+            margin-top: 0;
+            margin-bottom: 30px; 
+            font-weight: 500;
+        }
+        .choix-badge { 
+            background: #FF9800; 
+            color: white; 
+            padding: 10px 24px; 
+            border-radius: 25px; 
+            font-weight: bold; 
+            display: inline-block; 
+            margin-bottom: 30px; 
+            font-size: 16px; 
+            box-shadow: 0 4px 10px rgba(255, 152, 0, 0.2);
+        }
+        #loading { 
+            color: #003366; 
+            font-weight: bold; 
+            margin-bottom: 15px; 
+            font-size: 15px;
+        }
+        #success-msg { 
+            color: #4CAF50; 
+            font-weight: bold; 
+            display: none; 
+            font-size: 16px; 
+            line-height: 1.5;
+        }
+        #warning-msg { 
+            color: #FF9800; 
+            font-weight: bold; 
+            display: none; 
+            font-size: 15px; 
+            line-height: 1.6;
+        }
+        #error-msg { 
+            color: #F44336; 
+            font-weight: bold; 
+            display: none; 
+            font-size: 15px; 
+            line-height: 1.5;
+        }
+        .warning-icon {
+            font-size: 18px;
+            margin-right: 4px;
+        }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>TAYAL MGX</h2>
-    <p class="subtitle">Département des Services Généraux</p>
+    <!-- الشعار المرفق -->
+    <img src="logo.png" alt="TAYAL Logo" class="logo">
+    
+    <!-- النصوص الجديدة معدلة بـ S -->
+    <h2>CONFIRMATION NAVETTES WEEK-END</h2>
+    <p class="subtitle">Département des Moyens Généraux</p>
     
     <div id="loading">Enregistrement de votre choix en cours...</div>
     <div class="choix-badge" id="display-choix" style="display:none;"></div>
     
-    <p id="success-msg">✅ Réservation confirmée avec succès !<br><br><span style="font-size: 13px; color: #888;">Merci. Vous pouvez fermer cette page.</span></p>
-    <p id="warning-msg">⚠️ Vous avez déjà effectué votre choix.<br>Vous ne pouvez choisir qu'une seule fois.</p>
+    <!-- الرسائل والتنبيهات -->
+    <p id="success-msg">✅ Réservation confirmée avec succès !<br><br><span style="font-size: 13px; color: #888; font-weight: normal;">Merci. Vous pouvez fermer cette page.</span></p>
+    <p id="warning-msg"><span class="warning-icon">⚠️</span> Vous avez déjà effectué votre choix.<br>Vous ne pouvez choisir qu'une seule fois.</p>
     <p id="error-msg"></p>
 </div>
 
@@ -49,7 +127,13 @@
             return;
         }
 
-        document.getElementById('display-choix').innerText = choixNavette.replace(/_/g, ' ');
+        let affichageChoix = choixNavette.replace(/_/g, ' ');
+        if(affichageChoix.toLowerCase() === 'depart') affichageChoix = 'Départ';
+        if(affichageChoix.toLowerCase() === 'retour') affichageChoix = 'Retour';
+        if(affichageChoix.toLowerCase() === 'depart retour') affichageChoix = 'Départ / Retour';
+        if(affichageChoix.toLowerCase() === 'pas de navette') affichageChoix = 'Pas de navette';
+
+        document.getElementById('display-choix').innerText = affichageChoix;
         document.getElementById('display-choix').style.display = 'inline-block';
 
         const { error } = await supabaseClient
