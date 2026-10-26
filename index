@@ -27,8 +27,8 @@
     <div class="choix-badge" id="display-choix" style="display:none;"></div>
     
     <p id="success-msg">✅ Réservation confirmée avec succès !<br><br><span style="font-size: 13px; color: #888;">Merci. Vous pouvez fermer cette page.</span></p>
-    <p id="warning-msg">⚠️ Vous avez déjà effectué votre choix. Vous ne pouvez choisir qu'une seule fois.</p>
-    <p id="error-msg">⚠️ Erreur : Lien invalide ou incomplet.</p>
+    <p id="warning-msg">⚠️ Vous avez déjà effectué votre choix.<br>Vous ne pouvez choisir qu'une seule fois.</p>
+    <p id="error-msg"></p>
 </div>
 
 <script>
@@ -44,6 +44,7 @@
     async function enregistrer() {
         if (!choixNavette || !emailEmploye) {
             document.getElementById('loading').style.display = 'none';
+            document.getElementById('error-msg').innerText = "⚠️ Erreur : Lien invalide ou incomplet.";
             document.getElementById('error-msg').style.display = 'block';
             return;
         }
@@ -51,18 +52,18 @@
         document.getElementById('display-choix').innerText = choixNavette.replace(/_/g, ' ');
         document.getElementById('display-choix').style.display = 'inline-block';
 
-        const { data, error } = await supabaseClient
+        const { error } = await supabaseClient
             .from('navette_reponses')
-            .insert([{ 
-                email_employe: emailEmploye, 
-                choix: choixNavette
-            }]);
+            .insert([{ email_employe: emailEmploye, choix: choixNavette }]);
 
         document.getElementById('loading').style.display = 'none';
 
         if (error) {
-            // التعديل هنا: سيتعرف الكود على خطأ "unique_email" ويُظهر رسالتك المخصصة
-            if (error.code === '23505' || error.message.includes('unique_email') || error.message.includes('duplicate')) { 
+            // تحويل رسالة الخطأ إلى أحرف صغيرة للتأكد من التقاطها دائماً
+            const errMsg = (error.message || "").toLowerCase();
+            const errCode = (error.code || "").toString();
+
+            if (errCode === '23505' || errMsg.includes('unique') || errMsg.includes('duplicate')) { 
                 document.getElementById('warning-msg').style.display = 'block';
             } else {
                 document.getElementById('error-msg').innerText = "Erreur de connexion : " + error.message;
