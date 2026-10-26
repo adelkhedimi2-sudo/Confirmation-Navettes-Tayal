@@ -27,7 +27,7 @@
     <div class="choix-badge" id="display-choix" style="display:none;"></div>
     
     <p id="success-msg">✅ Réservation confirmée avec succès !<br><br><span style="font-size: 13px; color: #888;">Merci. Vous pouvez fermer cette page.</span></p>
-    <p id="warning-msg">⚠️ Vous avez déjà effectué votre choix.<br>Vous ne pouvez choisir qu'une seule fois.</p>
+    <p id="warning-msg">⚠️ Vous avez déjà effectué votre choix. Vous ne pouvez choisir qu'une seule fois.</p>
     <p id="error-msg">⚠️ Erreur : Lien invalide ou incomplet.</p>
 </div>
 
@@ -61,10 +61,11 @@
         document.getElementById('loading').style.display = 'none';
 
         if (error) {
-            if (error.code === '23505' || error.message.toLowerCase().includes('duplicate')) { 
+            // التعديل هنا: سيتعرف الكود على خطأ "unique_email" ويُظهر رسالتك المخصصة
+            if (error.code === '23505' || error.message.includes('unique_email') || error.message.includes('duplicate')) { 
                 document.getElementById('warning-msg').style.display = 'block';
             } else {
-                document.getElementById('error-msg').innerText = "Erreur : " + error.message;
+                document.getElementById('error-msg').innerText = "Erreur de connexion : " + error.message;
                 document.getElementById('error-msg').style.display = 'block';
             }
         } else {
