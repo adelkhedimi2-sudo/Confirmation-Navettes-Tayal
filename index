@@ -27,7 +27,7 @@
     <div class="choix-badge" id="display-choix" style="display:none;"></div>
     
     <p id="success-msg">✅ Réservation confirmée avec succès !<br><br><span style="font-size: 13px; color: #888;">Merci. Vous pouvez fermer cette page.</span></p>
-    <p id="warning-msg">⚠️ Vous avez déjà effectué votre choix pour <b>aujourd'hui</b>.<br>Vous pourrez choisir à nouveau demain.</p>
+    <p id="warning-msg">⚠️ Vous avez déjà effectué votre choix.<br>Vous ne pouvez choisir qu'une seule fois.</p>
     <p id="error-msg">⚠️ Erreur : Lien invalide ou incomplet.</p>
 </div>
 
@@ -48,9 +48,6 @@
             return;
         }
 
-        const today = new Date().toISOString().split('T')[0];
-        const uniqueIdForToday = emailEmploye.toLowerCase() + "_" + today;
-
         document.getElementById('display-choix').innerText = choixNavette.replace(/_/g, ' ');
         document.getElementById('display-choix').style.display = 'inline-block';
 
@@ -58,14 +55,12 @@
             .from('navette_reponses')
             .insert([{ 
                 email_employe: emailEmploye, 
-                choix: choixNavette,
-                id_unique_jour: uniqueIdForToday 
+                choix: choixNavette
             }]);
 
         document.getElementById('loading').style.display = 'none';
 
         if (error) {
-            // التعديل هنا: سيتعرف الكود على أي خطأ يخص التكرار ويُظهر التحذير البرتقالي
             if (error.code === '23505' || error.message.toLowerCase().includes('duplicate')) { 
                 document.getElementById('warning-msg').style.display = 'block';
             } else {
