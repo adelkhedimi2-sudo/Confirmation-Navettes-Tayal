@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmation Navette TAYAL</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f9f9f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 35px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: center; width: 100%; max-width: 400px; border-top: 5px solid #003366; }
+        h2 { color: #003366; margin-top: 0; margin-bottom: 5px; font-size: 24px; }
+        .subtitle { color: #888; font-size: 14px; margin-bottom: 25px; }
+        .choix-badge { background: #FF9800; color: white; padding: 8px 20px; border-radius: 20px; font-weight: bold; display: inline-block; margin-bottom: 20px; font-size: 16px; }
+        #loading { color: #003366; font-weight: bold; margin-bottom: 15px; }
+        #success-msg { color: #4CAF50; font-weight: bold; display: none; font-size: 16px; }
+        #error-msg { color: #F44336; font-weight: bold; display: none; font-size: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>TAYAL MGX</h2>
+    <p class="subtitle">Département des Services Généraux</p>
+    
+    <div id="loading">Enregistrement de votre choix en cours...</div>
+    
+    <div class="choix-badge" id="display-choix" style="display:none;"></div>
+    
+    <p id="success-msg">✅ Réservation confirmée avec succès !<br><br><span style="font-size: 13px; color: #888;">Merci. Vous pouvez fermer cette page.</span></p>
+    <p id="error-msg">⚠️ Erreur : Lien invalide ou incomplet.</p>
+</div>
+
+<script>
+    const SUPABASE_URL = 'https://dsmflhnjmnllvhkuepit.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM';
+    
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const choixNavette = urlParams.get('choix');
+    const emailEmploye = urlParams.get('email');
+
+    async function enregistrer() {
+        if (!choixNavette || !emailEmploye) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error-msg').style.display = 'block';
+            return;
+        }
+
+        document.getElementById('display-choix').innerText = choixNavette.replace(/_/g, ' ');
+        document.getElementById('display-choix').style.display = 'inline-block';
+
+        const { data, error } = await supabaseClient
+            .from('navette_reponses')
+            .insert([{ email_employe: emailEmploye, choix: choixNavette }]);
+
+        document.getElementById('loading').style.display = 'none';
+
+        if (error) {
+            document.getElementById('error-msg').innerText = "Erreur de connexion : " + error.message;
+            document.getElementById('error-msg').style.display = 'block';
+        } else {
+            document.getElementById('success-msg').style.display = 'block';
+        }
+    }
+
+    window.onload = enregistrer;
+</script>
+
+</body>
+</html>
