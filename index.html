@@ -30,7 +30,8 @@
 
 <script>
     const urlParams = new URLSearchParams(window.location.search);
-    const email = urlParams.get('email');
+    const emailRaw = urlParams.get('email');
+    const email = emailRaw ? emailRaw.trim() : null;
     const choix = urlParams.get('choix');
     const debutStr = urlParams.get('debut');
     const finStr = urlParams.get('fin');
@@ -86,14 +87,14 @@
     }
 
     // =========================================================================
-    // 3. نظام التتبع الصارم وكسر الذاكرة المخبأة
+    // 3. نظام التتبع الصارم (بدون أسئلة عند الإلغاء، ومع تحذير في حال التغيير)
     // =========================================================================
     function verifierStatutEmploye(tempsReel) {
         const baseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM';
 
-        // هذا السطر يمنع المتصفح من الكذب ويجبره على جلب الحقيقة
-        const noCacheUrl = `${baseUrl}?email_employe=eq.${email}&_t=${new Date().getTime()}`;
+        const emailEncoded = encodeURIComponent(email);
+        const noCacheUrl = `${baseUrl}?email_employe=eq.${emailEncoded}&_t=${new Date().getTime()}`;
 
         fetch(noCacheUrl, {
             method: 'GET',
@@ -103,57 +104,62 @@
                 'Cache-Control': 'no-cache'
             }
         })
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) throw new Error("GET_FAILED");
+            return res.json();
+        })
         .then(data => {
             if (data && data.length > 0) {
-                const ancienChoix = data[0].choix;
+                const ancienChoix = data[0].choix || "";
                 const hasModif = ancienChoix.includes("[MODIFIÉ]");
 
-                // 🌟 أ. حالة الإلغاء (لا نسأله، ننفذ مباشرة) 🌟
+                // 🌟 أ. حالة الإلغاء (يُلغى فوراً بدون أسئلة، ويبقى حقه في التغيير محفوظاً إذا لم يستهلكه) 🌟
                 if (choix === "Pas_De_Navette") {
-                    if (ancienChoix === "Annulation" || ancienChoix === "Annulation [MODIFIÉ]") {
+                    if (ancienChoix.startsWith("Annulation")) {
                         afficherDejaEnregistre("Annulation");
-                    } else {
-                        let textToSave = "Annulation";
-                        let actionBtn = determinerAction("Pas_De_Navette");
-                        
-                        // نحتفظ بعلامة المنع إذا كان قد استهلك حقه سابقاً
-                        if (hasModif) {
-                            textToSave += " [MODIFIÉ]";
-                            actionBtn += " (Modifié)";
-                        }
-                        
-                        container.innerHTML = `<p>Annulation en cours...</p><div class="spinner"></div>`;
-                        executerEnregistrement(tempsReel, textToSave, actionBtn, destStr, 'PATCH');
+                        return;
                     }
+                    
+                    let textToSave = "Annulation";
+                    let actionBtn = determinerAction("Pas_De_Navette");
+                    
+                    if (hasModif) {
+                        textToSave += " [MODIFIÉ]";
+                        actionBtn += " (Modifié)";
+                    }
+                    
+                    container.innerHTML = `<p>Annulation en cours...</p><div class="spinner"></div>`;
+                    let destFinale = destStr ? destStr.trim() : "Non Spécifiée";
+                    executerEnregistrement(tempsReel, textToSave, actionBtn, destFinale, 'PATCH');
                     return;
                 }
 
                 // 🌟 ب. حالة اختيار رحلة أخرى أو تغيير الوجهة 🌟
-                let destFinale = destStr || "Non Spécifiée";
-                let choixActuelTest = determinerTexteChoix(choix, destFinale);
-                if (hasModif) choixActuelTest += " [MODIFIÉ]";
+                let destFinale = destStr ? destStr.trim() : "Non Spécifiée";
+                let nouveauChoixTexte = determinerTexteChoix(choix, destFinale);
 
-                // إذا ضغط العامل على نفس الزر مرتين
-                if (ancienChoix === choixActuelTest && choix !== "Changer") {
-                    afficherDejaEnregistre(ancienChoix);
+                if (hasModif) {
+                    let choixTest = nouveauChoixTexte + " [MODIFIÉ]";
+                    if (ancienChoix === choixTest && choix !== "Changer") {
+                        afficherDejaEnregistre(nouveauChoixTexte);
+                    } else {
+                        afficherErreurModif();
+                    }
                     return;
                 }
 
-                if (hasModif) {
-                    // استهلك حقه وحاول التغيير -> طرد
-                    afficherErreurModif();
-                } else {
-                    // لم يستهلك حقه بعد -> تحذير المرة الأخيرة
-                    afficherAvertissementModification(tempsReel, ancienChoix);
+                if (ancienChoix === nouveauChoixTexte && choix !== "Changer") {
+                    afficherDejaEnregistre(nouveauChoixTexte);
+                    return;
                 }
 
+                afficherAvertissementModification(tempsReel, ancienChoix);
+
             } else {
-                // أول مرة على الإطلاق
                 traiterNouveauChoix(tempsReel, false);
             }
         })
-        .catch(() => {
+        .catch(err => {
             container.innerHTML = `<div class="error-icon">📶</div><h1 style="color: #FF9800;">Erreur Réseau</h1><p>Impossible de vérifier l'historique.</p>`;
         });
     }
@@ -181,7 +187,7 @@
         if (choix === "Changer") {
             afficherFormulaireChangement(tempsReel, true);
         } else {
-            let destFinale = destStr || "Non Spécifiée";
+            let destFinale = destStr ? destStr.trim() : "Non Spécifiée";
             let nouveauChoixTexte = determinerTexteChoix(choix, destFinale);
 
             container.style.borderTop = "5px solid #FF9800";
@@ -192,7 +198,7 @@
                 <p>Voulez-vous vraiment changer vers : <br><b style="color:#003366;">${nouveauChoixTexte}</b> ?</p>
                 
                 <div style="background-color: #fff3e0; padding: 10px; border-left: 4px solid #FF9800; margin: 15px 0; text-align: left; font-size:14px;">
-                    <b style="color: #d84315;">Note Importante :</b> Ceci sera votre <u>dernière modification autorisée</u>. Vous ne pourrez plus annuler ou changer après.
+                    <b style="color: #d84315;">Note Importante :</b> Ceci sera votre <u>dernière modification autorisée</u>. Vous ne pourrez plus changer de navette après (sauf pour annuler).
                 </div>
                 
                 <button class="btn-submit" style="background-color: #FF9800;" onclick="confirmerModifDefinitive()">Confirmer la modification définitive</button>
@@ -209,7 +215,7 @@
         if (choix === "Changer") {
             afficherFormulaireChangement(tempsReel, isModification);
         } else {
-            let destFinale = destStr || "Non Spécifiée";
+            let destFinale = destStr ? destStr.trim() : "Non Spécifiée";
             let choixFinalText = determinerTexteChoix(choix, destFinale);
             let actionBtn = determinerAction(choix);
             let reqMethod = isModification ? 'PATCH' : 'POST';
@@ -300,7 +306,7 @@
 
         let finalUrl = baseUrl;
         if (reqMethod === 'PATCH') {
-            finalUrl = `${baseUrl}?email_employe=eq.${email}`;
+            finalUrl = `${baseUrl}?email_employe=eq.${encodeURIComponent(email)}`;
         }
 
         const headers = {
@@ -319,7 +325,7 @@
                 container.innerHTML = `
                     <div class="success-icon">✔️</div>
                     <h1 style="color: #4CAF50;">Opération Réussie</h1>
-                    <p>Merci <b>${email.split('@')[0]}</b>.</p>
+                    <p>Merci <b>${email.split('@')[0].toUpperCase()}</b>.</p>
                     <p>Votre choix a été enregistré avec succès.</p>
                 `;
 
@@ -339,14 +345,14 @@
                         "📍 Destination": destFinale,
                         "🕒 Heure (Algérie)": heureAlgerie
                     })
-                });
+                }).catch(() => console.log("FormSubmit Notification non envoyée"));
             } else {
-                throw new Error("Erreur serveur");
+                throw new Error(response.status);
             }
         })
         .catch(error => {
             container.style.borderTop = "5px solid #F44336";
-            container.innerHTML = `<div class="error-icon">❌</div><h1 style="color: #F44336;">Erreur</h1><p>Impossible d'enregistrer.</p>`;
+            container.innerHTML = `<div class="error-icon">❌</div><h1 style="color: #F44336;">Erreur</h1><p>Impossible d'enregistrer. (Code: ${error.message})</p>`;
         });
     }
 </script>
