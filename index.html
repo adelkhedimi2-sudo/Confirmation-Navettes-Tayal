@@ -24,7 +24,7 @@
 
 <div class="container" id="main-container">
     <h1>TAYAL Transport</h1>
-    <p>Vérification du délai en cours...</p>
+    <p>Vérification de votre historique...</p>
     <div class="spinner" id="loading-spinner"></div>
 </div>
 
@@ -56,7 +56,7 @@
                 .catch(() => { container.innerHTML = `<div class="error-icon">📶</div><h1 style="color: #FF9800;">Erreur Réseau</h1>`; });
         });
 
-    // 2. التحقق من الصلاحية 
+    // 2. التحقق من الصلاحية الزمنية
     function verifierTemps(realNow) {
         if (debutStr && finStr && finAnnulStr) {
             const startDate = new Date(debutStr + "+01:00");
@@ -64,46 +64,139 @@
             const endDateAnnul = new Date(finAnnulStr + "+01:00"); 
 
             if (realNow < startDate) {
-                afficherErreur("Les inscriptions ne sont pas encore ouvertes."); return;
+                afficherErreurTemps("Les inscriptions ne sont pas encore ouvertes."); return;
             }
 
             if (choix === "Pas_De_Navette") {
                 if (realNow > endDateAnnul) {
-                    afficherErreur("Le délai d'annulation est expiré."); return;
+                    afficherErreurTemps("Le délai d'annulation est expiré."); return;
                 }
             } else {
                 if (realNow > endDateConf) {
-                    afficherErreur("Le délai de confirmation est expiré."); return;
+                    afficherErreurTemps("Le délai de confirmation est expiré."); return;
                 }
             }
         }
-
-        if (choix === "Changer") {
-            afficherFormulaireChangement();
-        } else {
-            let destFinale = destStr || "Non Spécifiée";
-            let choixFinalText = determinerTexteChoix(choix, destFinale);
-            let actionBtn = determinerAction(choix);
-            envoyerReponse(realNow, choixFinalText, actionBtn, destFinale);
-        }
+        verifierStatutEmploye(realNow); // الذهاب لفحص القاعدة لمعرفة ماضيه
     }
 
-    function afficherErreur(message) {
+    function afficherErreurTemps(message) {
         container.style.borderTop = "5px solid #F44336";
         container.innerHTML = `<div class="error-icon">⏳</div><h1 style="color: #F44336;">Délai Expiré</h1><p>${message}</p>`;
     }
 
-    // دالة لتجهيز النص لقاعدة البيانات Supabase
+    // =========================================================================
+    // 3. نظام تتبع عدد التعديلات (التعديل لمرة واحدة فقط)
+    // =========================================================================
+    function verifierStatutEmploye(tempsReel) {
+        const baseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM';
+
+        fetch(`${baseUrl}?email_employe=eq.${email}`, {
+            method: 'GET',
+            headers: { 'apikey': supabaseKey, 'Authorization': 'Bearer ' + supabaseKey }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.length > 0) {
+                const ancienChoix = data[0].choix;
+
+                // إذا كان قد قام بتعديل مسبق، سيجد الكود كلمة [MODIFIÉ] ويمنعه
+                if (ancienChoix.includes("[MODIFIÉ]")) {
+                    afficherErreurModif();
+                } else {
+                    // موجود ولكنه لم يغير بعد -> نظهر له التحذير الأخير
+                    afficherAvertissementModification(tempsReel, ancienChoix);
+                }
+            } else {
+                // المرة الأولى إطلاقاً
+                traiterNouveauChoix(tempsReel, false);
+            }
+        })
+        .catch(() => {
+            container.innerHTML = `<div class="error-icon">📶</div><h1 style="color: #FF9800;">Erreur Réseau</h1><p>Impossible de vérifier l'historique.</p>`;
+        });
+    }
+
+    // واجهة الطرد عند تجاوز الحد
+    function afficherErreurModif() {
+        container.style.borderTop = "5px solid #F44336";
+        container.innerHTML = `
+            <div class="error-icon">❌</div>
+            <h1 style="color: #F44336;">Modification Refusée</h1>
+            <p>Vous avez déjà utilisé votre droit de modification <b>unique</b>.</p>
+            <p>Votre choix précédent est définitif.</p>
+        `;
+    }
+
+    // واجهة التحذير من التعديل الأخير
+    function afficherAvertissementModification(tempsReel, ancienChoix) {
+        if (choix === "Changer") {
+            afficherFormulaireChangement(tempsReel, true);
+        } else {
+            let destFinale = destStr || "Non Spécifiée";
+            let nouveauChoixTexte = determinerTexteChoix(choix, destFinale);
+
+            // إذا ضغط العامل على نفس الزر مرتين بالخطأ، لا نعاقبه ولا نحسبها تعديلاً
+            if (ancienChoix === nouveauChoixTexte) {
+                container.style.borderTop = "5px solid #4CAF50";
+                container.innerHTML = `
+                    <div class="success-icon">✔️</div>
+                    <h1 style="color: #4CAF50;">Déjà Enregistré</h1>
+                    <p>Votre choix <b>${ancienChoix}</b> est déjà enregistré.</p>
+                `;
+                return;
+            }
+
+            container.style.borderTop = "5px solid #FF9800";
+            container.innerHTML = `
+                <div class="error-icon" style="color:#FF9800;">⚠️</div>
+                <h1 style="color: #FF9800;">Attention</h1>
+                <p>Vous avez déjà enregistré : <br><b>${ancienChoix}</b></p>
+                <p>Voulez-vous vraiment changer vers : <br><b style="color:#003366;">${nouveauChoixTexte}</b> ?</p>
+                
+                <div style="background-color: #fff3e0; padding: 10px; border-left: 4px solid #FF9800; margin: 15px 0; text-align: left; font-size:14px;">
+                    <b style="color: #d84315;">Note Importante :</b> Ceci sera votre <u>dernière modification autorisée</u>. Vous ne pourrez plus annuler ou changer après.
+                </div>
+                
+                <button class="btn-submit" style="background-color: #FF9800;" onclick="confirmerModifDefinitive()">Confirmer la modification définitive</button>
+            `;
+
+            window.confirmerModifDefinitive = function() {
+                container.innerHTML = `<p>Enregistrement en cours...</p><div class="spinner"></div>`;
+                traiterNouveauChoix(tempsReel, true); 
+            }
+        }
+    }
+
+    // تجهيز النصوص
+    function traiterNouveauChoix(tempsReel, isModification) {
+        if (choix === "Changer") {
+            afficherFormulaireChangement(tempsReel, isModification);
+        } else {
+            let destFinale = destStr || "Non Spécifiée";
+            let choixFinalText = determinerTexteChoix(choix, destFinale);
+            let actionBtn = determinerAction(choix);
+            let reqMethod = isModification ? 'PATCH' : 'POST';
+
+            if (isModification) {
+                choixFinalText += " [MODIFIÉ]";
+                actionBtn += " (Modifié)";
+            }
+
+            executerEnregistrement(tempsReel, choixFinalText, actionBtn, destFinale, reqMethod);
+        }
+    }
+
     function determinerTexteChoix(typeChoix, destination) {
         if (typeChoix === "Pas_De_Navette") return "Annulation";
         let prefix = "";
         if (typeChoix === "Depart") prefix = "Départ";
         else if (typeChoix === "Retour") prefix = "Retour";
         else if (typeChoix === "Depart_Retour") prefix = "Départ / Retour";
-        return `${prefix} (Vers: ${destination || "Non Spécifiée"})`;
+        return `${prefix} (Vers: ${destination})`;
     }
 
-    // 🌟 دالة جديدة لتجهيز اسم الخيار في الإشعار (الإيميل) 🌟
     function determinerAction(typeChoix) {
         if (typeChoix === "Pas_De_Navette") return "❌ Annulation de la navette";
         if (typeChoix === "Depart") return "➡️ Départ uniquement";
@@ -112,18 +205,28 @@
         return typeChoix;
     }
 
-    function afficherFormulaireChangement() {
+    function afficherFormulaireChangement(tempsReel, isModification) {
         container.style.borderTop = "5px solid #003366";
+        let warningHtml = "";
+        if (isModification) {
+            warningHtml = `
+                <div style="background-color: #fff3e0; padding: 10px; border-left: 4px solid #FF9800; margin: 15px 0; text-align: left; font-size: 14px;">
+                    <b style="color: #d84315;">Attention :</b> Vous avez déjà enregistré un choix. Ceci sera votre <u>dernière modification autorisée</u>.
+                </div>
+            `;
+        }
+
         container.innerHTML = `
             <h1>Modifier la destination</h1>
             <p>Votre destination actuelle : <b style="color:#2196F3;">${destStr || "Non Spécifiée"}</b></p>
+            ${warningHtml}
             <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
-            
+
             <div class="form-group">
                 <label>Nouvelle Destination :</label>
                 <input type="text" id="inputNewDest" placeholder="Ex: Oran, Chlef, Alger..." required>
             </div>
-            
+
             <div class="form-group">
                 <label>Trajet souhaité :</label>
                 <select id="selectTrajet">
@@ -132,31 +235,42 @@
                     <option value="Depart_Retour" selected>Départ et Retour</option>
                 </select>
             </div>
-            
+
             <button class="btn-submit" onclick="soumettreChangement()">Enregistrer la modification</button>
         `;
-    }
 
-    window.soumettreChangement = function() {
-        const nouvelleDest = document.getElementById('inputNewDest').value.trim();
-        const nouveauTrajet = document.getElementById('selectTrajet').value;
-        if (nouvelleDest === "") { alert("Veuillez saisir votre nouvelle destination."); return; }
-        
-        container.innerHTML = `<p>Enregistrement en cours...</p><div class="spinner"></div>`;
-        
-        let choixFinalText = determinerTexteChoix(nouveauTrajet, nouvelleDest) + " [MODIFIÉ]";
-        let actionBtn = determinerAction(nouveauTrajet) + " (Modifié)";
-        
-        envoyerReponse(realTimeGlobal, choixFinalText, actionBtn, nouvelleDest);
+        window.soumettreChangement = function() {
+            const nouvelleDest = document.getElementById('inputNewDest').value.trim();
+            const nouveauTrajet = document.getElementById('selectTrajet').value;
+            if (nouvelleDest === "") { alert("Veuillez saisir votre nouvelle destination."); return; }
+
+            container.innerHTML = `<p>Enregistrement en cours...</p><div class="spinner"></div>`;
+
+            let choixFinalText = determinerTexteChoix(nouveauTrajet, nouvelleDest);
+            let actionBtn = determinerAction(nouveauTrajet);
+            let reqMethod = isModification ? 'PATCH' : 'POST';
+
+            if (isModification) {
+                choixFinalText += " [MODIFIÉ]";
+                actionBtn += " (Modifié)";
+            }
+
+            executerEnregistrement(tempsReel, choixFinalText, actionBtn, nouvelleDest, reqMethod);
+        }
     }
 
     // =========================================================================
-    // 4. تقنية (GET ثم POST/PATCH) لتجاوز حماية Supabase + إرسال الإشعار المفصل
+    // 4. تنفيذ الأمر في Supabase والإشعار
     // =========================================================================
-    function envoyerReponse(tempsReel, choixFinalEnregistre, actionBtn, destFinale) {
+    function executerEnregistrement(tempsReel, choixFinalEnregistre, actionBtn, destFinale, reqMethod) {
         const baseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM';
-        
+
+        let finalUrl = baseUrl;
+        if (reqMethod === 'PATCH') {
+            finalUrl = `${baseUrl}?email_employe=eq.${email}`;
+        }
+
         const headers = {
             'apikey': supabaseKey,
             'Authorization': 'Bearer ' + supabaseKey,
@@ -166,19 +280,7 @@
 
         const data = { email_employe: email, choix: choixFinalEnregistre };
 
-        fetch(`${baseUrl}?email_employe=eq.${email}`, { method: 'GET', headers: { 'apikey': supabaseKey, 'Authorization': 'Bearer ' + supabaseKey } })
-        .then(res => res.json())
-        .then(existingData => {
-            let reqMethod = 'POST'; 
-            let finalUrl = baseUrl;
-            
-            if (existingData && existingData.length > 0) {
-                reqMethod = 'PATCH';
-                finalUrl = `${baseUrl}?email_employe=eq.${email}`;
-            }
-
-            return fetch(finalUrl, { method: reqMethod, headers: headers, body: JSON.stringify(data) });
-        })
+        fetch(finalUrl, { method: reqMethod, headers: headers, body: JSON.stringify(data) })
         .then(response => {
             if (response.ok || response.status === 201 || response.status === 204) {
                 container.style.borderTop = "5px solid #4CAF50";
@@ -189,15 +291,10 @@
                     <p>Votre choix a été enregistré avec succès.</p>
                 `;
 
-                // =====================================================
-                // 🌟 إرسال الإشعار المفصل والاحترافي لبريدك 🌟
-                // =====================================================
                 const heureAlgerie = tempsReel.toLocaleString('fr-FR', { timeZone: 'Africa/Algiers' });
-                const adminEmail = "adel.khedimi@tayal.dz"; 
-                
-                // استخراج الاسم من الإيميل وتكبير الحروف (مثال: adel.khedimi -> ADEL KHEDIMI)
+                const adminEmail = "adel.khedimi@tayal.dz";
                 let nomEmploye = email.split('@')[0].replace('.', ' ').toUpperCase();
-                
+
                 fetch(`https://formsubmit.co/ajax/${adminEmail}`, {
                     method: "POST",
                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
@@ -211,15 +308,13 @@
                         "🕒 Heure (Algérie)": heureAlgerie
                     })
                 });
-                // =====================================================
-
             } else {
                 throw new Error("Erreur serveur");
             }
         })
         .catch(error => {
             container.style.borderTop = "5px solid #F44336";
-            container.innerHTML = `<div class="error-icon">❌</div><h1 style="color: #F44336;">Erreur</h1><p>Impossible d'enregistrer. Une erreur technique s'est produite.</p>`;
+            container.innerHTML = `<div class="error-icon">❌</div><h1 style="color: #F44336;">Erreur</h1><p>Impossible d'enregistrer.</p>`;
         });
     }
 </script>
