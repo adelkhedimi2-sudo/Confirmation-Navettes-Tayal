@@ -47,7 +47,6 @@
         throw new Error("Paramètres manquants.");
     }
 
-    // 1. جلب الوقت الفعلي للإنترنت
     fetch('https://worldtimeapi.org/api/timezone/Africa/Algiers')
         .then(res => { if (!res.ok) throw new Error(); return res.json(); })
         .then(data => { realTimeGlobal = new Date(data.datetime); verifierTemps(realTimeGlobal); })
@@ -57,7 +56,6 @@
                 .catch(() => { container.innerHTML = `<div class="error-icon">📶</div><h1 style="color: #FF9800;">Erreur Réseau</h1>`; });
         });
 
-    // 2. التحقق من الصلاحية الزمنية
     function verifierTemps(realNow) {
         if (debutStr && finStr && finAnnulStr) {
             const startDate = new Date(debutStr + "+01:00");
@@ -86,15 +84,11 @@
         container.innerHTML = `<div class="error-icon">⏳</div><h1 style="color: #F44336;">Délai Expiré</h1><p>${message}</p>`;
     }
 
-    // =========================================================================
-    // 3. نظام التتبع الذكي (إلغاء فوري + رسالة برتقالية + تحذير المرة الأخيرة)
-    // =========================================================================
     function verifierStatutEmploye(tempsReel) {
         const baseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM';
 
-        // هذا السطر يمنع المتصفح من الكذب ويجبره على قراءة القاعدة الفعلية
-        const queryUrl = `${baseUrl}?email_employe=eq.${email}&_t=${new Date().getTime()}`;
+        const queryUrl = `${baseUrl}?email_employe=eq.${encodeURIComponent(email)}&_t=${new Date().getTime()}`;
 
         fetch(queryUrl, {
             method: 'GET',
@@ -104,14 +98,15 @@
                 'Cache-Control': 'no-cache'
             }
         })
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) throw new Error(`GET HTTP Error: ${res.status}`);
+            return res.json();
+        })
         .then(data => {
             if (data && data.length > 0) {
-                // العامل موجود في القاعدة
-                const ancienChoix = data[data.length - 1].choix || "";
+                const ancienChoix = data[0].choix || "";
                 const hasModif = ancienChoix.includes("[MODIFIÉ]");
 
-                // 🌟 حالة 1: الضغط على الإلغاء (يتم فوراً بدون أسئلة) 🌟
                 if (choix === "Pas_De_Navette") {
                     if (ancienChoix.startsWith("Annulation")) {
                         afficherDejaEnregistre("Annulation");
@@ -120,8 +115,6 @@
                     
                     let textToSave = "Annulation";
                     let actionBtn = determinerAction("Pas_De_Navette");
-                    
-                    // إذا استهلك حقه في التغيير سابقاً نُبقي على علامة المنع
                     if (hasModif) {
                         textToSave += " [MODIFIÉ]";
                         actionBtn += " (Modifié)";
@@ -133,40 +126,34 @@
                     return;
                 }
 
-                // 🌟 حالة 2: اختيار رحلة أخرى أو تغيير الوجهة 🌟
                 let destFinale = destStr ? destStr.trim() : "Non Spécifiée";
                 let nouveauChoixTexte = determinerTexteChoix(choix, destFinale);
 
-                // إذا استهلك حقه في التغيير (يملك علامة MODIFIÉ)
                 if (hasModif) {
                     if (ancienChoix === (nouveauChoixTexte + " [MODIFIÉ]") && choix !== "Changer") {
                         afficherDejaEnregistre(nouveauChoixTexte);
                     } else {
-                        afficherErreurModif(); // طرد
+                        afficherErreurModif();
                     }
                     return;
                 }
 
-                // إذا ضغط على نفس اختياره الحالي (الرسالة البرتقالية)
                 if (ancienChoix === nouveauChoixTexte && choix !== "Changer") {
                     afficherDejaEnregistre(nouveauChoixTexte);
                     return;
                 }
 
-                // إذا أراد تغيير رحلته ولم يستهلك حقه بعد -> (تحذير المرة الأخيرة)
                 afficherAvertissementModification(tempsReel, ancienChoix, nouveauChoixTexte);
 
             } else {
-                // العامل يسجل لأول مرة إطلاقاً
                 traiterNouveauChoix(tempsReel, false);
             }
         })
-        .catch(() => {
-            container.innerHTML = `<div class="error-icon">📶</div><h1 style="color: #FF9800;">Erreur Réseau</h1><p>Impossible de vérifier l'historique.</p>`;
+        .catch(err => {
+            container.innerHTML = `<div class="error-icon">📶</div><h1 style="color: #FF9800;">Erreur Réseau</h1><p>Impossible de vérifier l'historique.</p><p style="font-size: 13px; color: #888;">(Détail: ${err.message})</p>`;
         });
     }
 
-    // 🌟 واجهة (لقد قمت بالفعل باختيار) البرتقالية 🌟
     function afficherDejaEnregistre(texte) {
         let cleanText = texte.replace(" [MODIFIÉ]", "");
         container.style.borderTop = "5px solid #FF9800";
@@ -180,7 +167,6 @@
         `;
     }
 
-    // واجهة (ممنوع التغيير)
     function afficherErreurModif() {
         container.style.borderTop = "5px solid #F44336";
         container.innerHTML = `
@@ -191,7 +177,6 @@
         `;
     }
 
-    // واجهة (التحذير الأخير قبل تغيير الرحلة)
     function afficherAvertissementModification(tempsReel, ancienChoix, nouveauChoixTexte) {
         let cleanAncien = ancienChoix.replace(" [MODIFIÉ]", "");
         container.style.borderTop = "5px solid #FF9800";
@@ -317,17 +302,13 @@
         return typeChoix;
     }
 
-    // =========================================================================
-    // 4. تنفيذ الأمر في Supabase وإرسال الإشعار
-    // =========================================================================
     function executerEnregistrement(tempsReel, choixFinalEnregistre, actionBtn, destFinale, reqMethod) {
         const baseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM';
 
-        // إصلاح خطأ الرابط: نستخدم الإيميل مباشرة في الرابط لتفادي أخطاء التشفير
         let finalUrl = baseUrl;
         if (reqMethod === 'PATCH') {
-            finalUrl = `${baseUrl}?email_employe=eq.${email}`;
+            finalUrl = `${baseUrl}?email_employe=eq.${encodeURIComponent(email)}`;
         }
 
         const headers = {
@@ -366,14 +347,21 @@
                         "📍 Destination": destFinale,
                         "🕒 Heure (Algérie)": heureAlgerie
                     })
-                });
+                }).catch(() => console.log("FormSubmit Error"));
             } else {
-                throw new Error("HTTP " + response.status);
+                return response.json().then(errData => {
+                    throw new Error(errData.message || response.status);
+                });
             }
         })
         .catch(error => {
             container.style.borderTop = "5px solid #F44336";
-            container.innerHTML = `<div class="error-icon">❌</div><h1 style="color: #F44336;">Erreur</h1><p>Impossible d'enregistrer.</p>`;
+            container.innerHTML = `
+                <div class="error-icon">❌</div>
+                <h1 style="color: #F44336;">Erreur</h1>
+                <p>Impossible d'enregistrer.</p>
+                <p style="color: #F44336; font-size: 13px; margin-top: 15px;">(Détail technique: ${error.message})</p>
+            `;
         });
     }
 </script>
