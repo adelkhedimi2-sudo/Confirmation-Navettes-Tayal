@@ -24,7 +24,7 @@
 
 <div class="container" id="main-container">
     <h1>TAYAL Transport</h1>
-    <p>Vérification de votre historique...</p>
+    <p>Vérification de sécurité en cours...</p>
     <div class="spinner" id="loading-spinner"></div>
 </div>
 
@@ -37,9 +37,11 @@
     const finStr = urlParams.get('fin');
     const finAnnulStr = urlParams.get('finAnnul'); 
     const destStr = urlParams.get('dest');         
+    const tokenURL = urlParams.get('token'); // 🌟 إضافة استخراج المفتاح السري 🌟
 
     const container = document.getElementById('main-container');
     let realTimeGlobal = null;
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM';
 
     if (!email || !choix) {
         container.style.borderTop = "5px solid #F44336";
@@ -47,15 +49,70 @@
         throw new Error("Paramètres manquants.");
     }
 
+    // الخطوة الأولى: جلب الوقت الحقيقي
     fetch('https://worldtimeapi.org/api/timezone/Africa/Algiers')
         .then(res => { if (!res.ok) throw new Error(); return res.json(); })
-        .then(data => { realTimeGlobal = new Date(data.datetime); verifierTemps(realTimeGlobal); })
+        .then(data => { realTimeGlobal = new Date(data.datetime); verifierTokenAvantTout(realTimeGlobal); })
         .catch(() => {
             fetch(window.location.href, { method: 'HEAD' })
-                .then(res => { realTimeGlobal = new Date(res.headers.get('Date')); verifierTemps(realTimeGlobal); })
+                .then(res => { realTimeGlobal = new Date(res.headers.get('Date')); verifierTokenAvantTout(realTimeGlobal); })
                 .catch(() => { container.innerHTML = `<div class="error-icon">📶</div><h1 style="color: #FF9800;">Erreur Réseau</h1>`; });
         });
 
+    // 🛑 نقطة التفتيش الأولى: التحقق من أمان الرابط (Token)
+    function verifierTokenAvantTout(tempsReel) {
+        const baseUrlToken = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/tokens_navette';
+        const queryUrl = new URL(baseUrlToken);
+        queryUrl.searchParams.append('email', `eq.${email}`);
+        queryUrl.searchParams.append('select', 'token');
+
+        fetch(queryUrl.toString(), {
+            method: 'GET',
+            headers: { 
+                'apikey': supabaseKey, 
+                'Authorization': 'Bearer ' + supabaseKey,
+                'Accept': 'application/json'
+            },
+            cache: 'no-store'
+        })
+        .then(res => {
+            if (!res.ok) throw new Error("Erreur vérification token");
+            return res.json();
+        })
+        .then(data => {
+            // إذا كان هناك مفتاح مسجل في القاعدة
+            if (data && data.length > 0) {
+                const dbToken = data[0].token;
+                // إذا كان المفتاح في القاعدة لا يطابق المفتاح في الرابط (يعني إيميل قديم)
+                if (dbToken && dbToken !== tokenURL) {
+                    afficherLienExpire();
+                    return; // 🛑 إيقاف كل شيء هنا!
+                }
+            }
+            // إذا كان المفتاح متطابقاً، نمر إلى نقطة التفتيش الثانية
+            verifierTemps(tempsReel);
+        })
+        .catch(err => {
+            console.error("Erreur Token:", err);
+            // في حال فشل الاتصال بجدول التوكن، نكمل العملية حتى لا يتوقف النظام بأكمله
+            verifierTemps(tempsReel); 
+        });
+    }
+
+    // دالة إظهار رسالة الرابط المنتهي
+    function afficherLienExpire() {
+        container.style.borderTop = "5px solid #F44336";
+        container.innerHTML = `
+            <div class="error-icon">❌</div>
+            <h1 style="color: #F44336;">Lien Expiré</h1>
+            <p>Ce lien n'est plus valide car vous avez reçu un <b>nouvel email</b> plus récent.</p>
+            <div style="background-color: #fff3e0; padding: 15px; border-radius: 8px; border-left: 5px solid #FF9800; display: inline-block; margin-top: 10px;">
+                <b style="color: #d84315;">Veuillez utiliser le lien contenu dans le dernier email reçu.</b>
+            </div>
+        `;
+    }
+
+    // ⏱️ نقطة التفتيش الثانية: التحقق من الوقت
     function verifierTemps(realNow) {
         if (debutStr && finStr && finAnnulStr) {
             const startDate = new Date(debutStr + "+01:00");
@@ -76,6 +133,7 @@
                 }
             }
         }
+        // 👤 نقطة التفتيش الثالثة: التحقق من حالة العامل
         verifierStatutEmploye(realNow);
     }
 
@@ -84,11 +142,10 @@
         container.innerHTML = `<div class="error-icon">⏳</div><h1 style="color: #F44336;">Délai Expiré</h1><p>${message}</p>`;
     }
 
+    // 👤 نقطة التفتيش الثالثة: التحقق من حالة العامل في جدول الإجابات
     function verifierStatutEmploye(tempsReel) {
         const baseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM';
-
-        // استخدام URLSearchParams لضمان التشفير الصحيح 100% ومنع خطأ 400
+        
         const queryUrl = new URL(baseUrl);
         queryUrl.searchParams.append('email_employe', `eq.${email}`);
         queryUrl.searchParams.append('select', 'choix');
@@ -100,7 +157,7 @@
                 'Authorization': 'Bearer ' + supabaseKey,
                 'Accept': 'application/json'
             },
-            cache: 'no-store' // كسر الكاش بأمان تام
+            cache: 'no-store'
         })
         .then(res => {
             if (!res.ok) throw new Error(`GET HTTP Error: ${res.status}`);
@@ -306,9 +363,9 @@
         return typeChoix;
     }
 
+    // ✅ نقطة النهاية: التسجيل في قاعدة البيانات
     function executerEnregistrement(tempsReel, choixFinalEnregistre, actionBtn, destFinale, reqMethod) {
         const baseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM';
 
         const finalUrl = new URL(baseUrl);
         if (reqMethod === 'PATCH') {
