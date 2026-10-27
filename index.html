@@ -81,8 +81,10 @@
         if (choix === "Changer") {
             afficherFormulaireChangement();
         } else {
-            let choixFinalText = determinerTexteChoix(choix, destStr);
-            envoyerReponse(realNow, choixFinalText);
+            let destFinale = destStr || "Non Spécifiée";
+            let choixFinalText = determinerTexteChoix(choix, destFinale);
+            let actionBtn = determinerAction(choix);
+            envoyerReponse(realNow, choixFinalText, actionBtn, destFinale);
         }
     }
 
@@ -91,6 +93,7 @@
         container.innerHTML = `<div class="error-icon">⏳</div><h1 style="color: #F44336;">Délai Expiré</h1><p>${message}</p>`;
     }
 
+    // دالة لتجهيز النص لقاعدة البيانات Supabase
     function determinerTexteChoix(typeChoix, destination) {
         if (typeChoix === "Pas_De_Navette") return "Annulation";
         let prefix = "";
@@ -98,6 +101,15 @@
         else if (typeChoix === "Retour") prefix = "Retour";
         else if (typeChoix === "Depart_Retour") prefix = "Départ / Retour";
         return `${prefix} (Vers: ${destination || "Non Spécifiée"})`;
+    }
+
+    // 🌟 دالة جديدة لتجهيز اسم الخيار في الإشعار (الإيميل) 🌟
+    function determinerAction(typeChoix) {
+        if (typeChoix === "Pas_De_Navette") return "❌ Annulation de la navette";
+        if (typeChoix === "Depart") return "➡️ Départ uniquement";
+        if (typeChoix === "Retour") return "⬅️ Retour uniquement";
+        if (typeChoix === "Depart_Retour") return "🔄 Départ et Retour";
+        return typeChoix;
     }
 
     function afficherFormulaireChangement() {
@@ -129,15 +141,19 @@
         const nouvelleDest = document.getElementById('inputNewDest').value.trim();
         const nouveauTrajet = document.getElementById('selectTrajet').value;
         if (nouvelleDest === "") { alert("Veuillez saisir votre nouvelle destination."); return; }
+        
         container.innerHTML = `<p>Enregistrement en cours...</p><div class="spinner"></div>`;
+        
         let choixFinalText = determinerTexteChoix(nouveauTrajet, nouvelleDest) + " [MODIFIÉ]";
-        envoyerReponse(realTimeGlobal, choixFinalText);
+        let actionBtn = determinerAction(nouveauTrajet) + " (Modifié)";
+        
+        envoyerReponse(realTimeGlobal, choixFinalText, actionBtn, nouvelleDest);
     }
 
     // =========================================================================
-    // 4. تقنية (GET ثم POST/PATCH) لتجاوز حماية Supabase
+    // 4. تقنية (GET ثم POST/PATCH) لتجاوز حماية Supabase + إرسال الإشعار المفصل
     // =========================================================================
-    function envoyerReponse(tempsReel, choixFinalEnregistre) {
+    function envoyerReponse(tempsReel, choixFinalEnregistre, actionBtn, destFinale) {
         const baseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM';
         
@@ -150,48 +166,53 @@
 
         const data = { email_employe: email, choix: choixFinalEnregistre };
 
-        // أ. الفحص هل العامل موجود مسبقاً أم لا
         fetch(`${baseUrl}?email_employe=eq.${email}`, { method: 'GET', headers: { 'apikey': supabaseKey, 'Authorization': 'Bearer ' + supabaseKey } })
         .then(res => res.json())
         .then(existingData => {
-            let reqMethod = 'POST'; // افتراضياً سنقوم بإضافة جديدة
+            let reqMethod = 'POST'; 
             let finalUrl = baseUrl;
             
-            // إذا كان موجوداً مسبقاً، نغير الأمر إلى تحديث (PATCH)
             if (existingData && existingData.length > 0) {
                 reqMethod = 'PATCH';
                 finalUrl = `${baseUrl}?email_employe=eq.${email}`;
             }
 
-            // ب. إرسال الطلب (إما إضافة أو تحديث)
             return fetch(finalUrl, { method: reqMethod, headers: headers, body: JSON.stringify(data) });
         })
         .then(response => {
-            // الاستجابة 204 و 201 و 200 كلها تعني نجاح العملية
             if (response.ok || response.status === 201 || response.status === 204) {
                 container.style.borderTop = "5px solid #4CAF50";
                 container.innerHTML = `
                     <div class="success-icon">✔️</div>
                     <h1 style="color: #4CAF50;">Opération Réussie</h1>
                     <p>Merci <b>${email.split('@')[0]}</b>.</p>
-                    <p>Votre choix <b style="color: #003366;">${choixFinalEnregistre}</b> a été enregistré.</p>
+                    <p>Votre choix a été enregistré avec succès.</p>
                 `;
 
-                // إرسال الإشعار
+                // =====================================================
+                // 🌟 إرسال الإشعار المفصل والاحترافي لبريدك 🌟
+                // =====================================================
                 const heureAlgerie = tempsReel.toLocaleString('fr-FR', { timeZone: 'Africa/Algiers' });
                 const adminEmail = "adel.khedimi@tayal.dz"; 
+                
+                // استخراج الاسم من الإيميل وتكبير الحروف (مثال: adel.khedimi -> ADEL KHEDIMI)
+                let nomEmploye = email.split('@')[0].replace('.', ' ').toUpperCase();
                 
                 fetch(`https://formsubmit.co/ajax/${adminEmail}`, {
                     method: "POST",
                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                     body: JSON.stringify({
-                        _subject: `📢 Navette TAYAL : ${email.split('@')[0]} a répondu !`,
+                        _subject: `📢 Navette : ${nomEmploye} a répondu !`,
                         _template: "table",
-                        "👤 Employé": email,
-                        "📌 Détail du Choix": choixFinalEnregistre,
+                        "👤 Nom & Prénom": nomEmploye,
+                        "📧 Email": email,
+                        "🔘 Choix effectué": actionBtn,
+                        "📍 Destination": destFinale,
                         "🕒 Heure (Algérie)": heureAlgerie
                     })
                 });
+                // =====================================================
+
             } else {
                 throw new Error("Erreur serveur");
             }
