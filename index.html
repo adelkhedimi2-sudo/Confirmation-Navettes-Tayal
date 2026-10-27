@@ -33,20 +33,9 @@
             animation: spin 1s linear infinite;
             margin: 20px auto;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .success-icon {
-            color: #4CAF50;
-            font-size: 55px;
-            margin-bottom: 10px;
-        }
-        .error-icon {
-            color: #F44336;
-            font-size: 55px;
-            margin-bottom: 10px;
-        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .success-icon { color: #4CAF50; font-size: 55px; margin-bottom: 10px; }
+        .error-icon { color: #F44336; font-size: 55px; margin-bottom: 10px; }
         h1 { color: #003366; margin-bottom: 10px; }
         h2 { font-size: 18px; color: #333; }
         p { color: #666; line-height: 1.6; font-size: 16px; }
@@ -56,12 +45,11 @@
 
 <div class="container" id="main-container">
     <h1>TAYAL Transport</h1>
-    <p>Traitement de votre demande en cours...</p>
+    <p>Vérification du délai en cours...</p>
     <div class="spinner" id="loading-spinner"></div>
 </div>
 
 <script>
-    // 1. استخراج البيانات من الرابط القادم من الإيميل
     const urlParams = new URLSearchParams(window.location.search);
     const email = urlParams.get('email');
     const choix = urlParams.get('choix');
@@ -70,91 +58,112 @@
 
     const container = document.getElementById('main-container');
 
-    // 2. التحقق من صلاحية الوقت (القفل الزمني الذي أضفناه في الإكسيل)
-    if (debutStr && finStr) {
-        const now = new Date();
-        const startDate = new Date(debutStr);
-        const endDate = new Date(finStr);
-
-        if (now < startDate || now > endDate) {
-            // إذا ضغط العامل خارج الوقت المسموح
-            container.style.borderTop = "5px solid #F44336";
-            container.innerHTML = `
-                <div class="error-icon">⏳</div>
-                <h1 style="color: #F44336;">Délai Expiré</h1>
-                <h2>انتهى وقت التسجيل</h2>
-                <p>La période d'inscription pour la navette est terminée.<br>Vous ne pouvez plus confirmer pour le moment.</p>
-            `;
-            throw new Error("Période expirée. Arrêt du script."); // إيقاف الكود نهائياً
-        }
-    }
-
-    // 3. التحقق من أن الرابط ليس فارغاً
     if (!email || !choix) {
         container.style.borderTop = "5px solid #F44336";
         container.innerHTML = `
             <div class="error-icon">⚠️</div>
             <h1 style="color: #F44336;">Erreur de Lien</h1>
-            <p>Le lien utilisé est invalide ou incomplet. Veuillez utiliser les boutons envoyés dans votre email.</p>
+            <p>Le lien utilisé est invalide. Veuillez utiliser les boutons envoyés dans votre email.</p>
         `;
         throw new Error("Paramètres manquants.");
     }
 
-    // 4. إرسال البيانات إلى قاعدة بيانات Supabase
-    const supabaseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM';
+    // =========================================================================
+    // 1. جلب الوقت الفعلي للإنترنت (توقيت الجزائر) لمنع أي تلاعب بساعة الحاسوب
+    // =========================================================================
+    fetch('https://worldtimeapi.org/api/timezone/Africa/Algiers')
+        .then(response => {
+            if (!response.ok) throw new Error("Erreur Serveur");
+            return response.json();
+        })
+        .then(timeData => {
+            const realNow = new Date(timeData.datetime); // وقت الإنترنت المستحيل تزويره
+            verifierTemps(realNow);
+        })
+        .catch(error => {
+            // كود بديل وحماية إضافية: إذا حظر أنتي فيروس الشركة موقع الوقت، سيقرأ الموقع وقت سيرفرات Github!
+            fetch(window.location.href, { method: 'HEAD' })
+                .then(res => {
+                    const realNow = new Date(res.headers.get('Date')); // وقت سيرفر جيتهاب
+                    verifierTemps(realNow);
+                })
+                .catch(() => {
+                     container.style.borderTop = "5px solid #FF9800";
+                     container.innerHTML = `<div class="error-icon" style="color: #FF9800;">📶</div><h1 style="color: #FF9800;">Erreur Réseau</h1><p>Veuillez vérifier votre connexion internet.</p>`;
+                });
+        });
 
-    const data = {
-        email_employe: email,
-        choix: choix
-    };
+    // =========================================================================
+    // 2. دالة التحقق من الصلاحية بناءً على الوقت الحقيقي
+    // =========================================================================
+    function verifierTemps(realNow) {
+        if (debutStr && finStr) {
+            // إضافة "+01:00" تجبر الموقع على فهم أن تواريخك في الإكسيل مكتوبة بتوقيت الجزائر
+            const startDate = new Date(debutStr + "+01:00");
+            const endDate = new Date(finStr + "+01:00");
 
-    fetch(supabaseUrl, {
-        method: 'POST',
-        headers: {
-            'apikey': supabaseKey,
-            'Authorization': 'Bearer ' + supabaseKey,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal'
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => {
-        if (response.ok || response.status === 201) {
-            // تحسين شكل الكلمة لتظهر بشكل جميل للعامل
-            let choixText = choix;
-            if(choix === "Depart") choixText = "Départ";
-            else if(choix === "Retour") choixText = "Retour";
-            else if(choix === "Depart_Retour") choixText = "Départ / Retour";
-            else if(choix === "Pas_De_Navette") choixText = "Pas De Navette";
-
-            // إظهار رسالة النجاح الخضراء
-            container.style.borderTop = "5px solid #4CAF50";
-            container.innerHTML = `
-                <div class="success-icon">✔️</div>
-                <h1 style="color: #4CAF50;">Confirmation Réussie</h1>
-                <p>Merci <b>${email.split('@')[0]}</b>.</p>
-                <p>Votre choix <b style="color: #003366;">(${choixText})</b> a été enregistré avec succès pour ce week-end.</p>
-            `;
-        } else {
-            // في حالة كان هناك حظر لمنع التكرار في قاعدة البيانات
-            container.style.borderTop = "5px solid #F44336";
-            container.innerHTML = `
-                <div class="error-icon">❌</div>
-                <h1 style="color: #F44336;">Erreur</h1>
-                <p>Vous avez déjà soumis votre réponse, ou une erreur technique s'est produite.</p>
-            `;
+            if (realNow < startDate || realNow > endDate) {
+                container.style.borderTop = "5px solid #F44336";
+                container.innerHTML = `
+                    <div class="error-icon">⏳</div>
+                    <h1 style="color: #F44336;">Délai Expiré</h1>
+                    <h2>انتهى وقت التسجيل</h2>
+                    <p>La période d'inscription pour la navette est terminée.<br>Vous ne pouvez plus confirmer pour le moment.</p>
+                `;
+                return; // إيقاف كل شيء هنا، ولن يرسل أي شيء للقاعدة!
+            }
         }
-    })
-    .catch(error => {
-        // في حالة ضعف أو انقطاع الأنترنت عند العامل
-        container.style.borderTop = "5px solid #FF9800";
-        container.innerHTML = `
-            <div class="error-icon" style="color: #FF9800;">📶</div>
-            <h1 style="color: #FF9800;">Problème de connexion</h1>
-            <p>Impossible de joindre le serveur. Veuillez vérifier votre connexion internet et réessayer.</p>
-        `;
-    });
+        // إذا كان الوقت سليماً، نرسل البيانات
+        envoyerReponse();
+    }
+
+    // =========================================================================
+    // 3. دالة إرسال الإجابة إلى قاعدة البيانات (Supabase)
+    // =========================================================================
+    function envoyerReponse() {
+        const supabaseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM';
+
+        const data = {
+            email_employe: email,
+            choix: choix
+        };
+
+        fetch(supabaseUrl, {
+            method: 'POST',
+            headers: {
+                'apikey': supabaseKey,
+                'Authorization': 'Bearer ' + supabaseKey,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            if (response.ok || response.status === 201) {
+                let choixText = choix;
+                if(choix === "Depart") choixText = "Départ";
+                else if(choix === "Retour") choixText = "Retour";
+                else if(choix === "Depart_Retour") choixText = "Départ / Retour";
+                else if(choix === "Pas_De_Navette") choixText = "Pas De Navette";
+
+                container.style.borderTop = "5px solid #4CAF50";
+                container.innerHTML = `
+                    <div class="success-icon">✔️</div>
+                    <h1 style="color: #4CAF50;">Confirmation Réussie</h1>
+                    <p>Merci <b>${email.split('@')[0]}</b>.</p>
+                    <p>Votre choix <b style="color: #003366;">(${choixText})</b> a été enregistré avec succès.</p>
+                `;
+            } else {
+                container.style.borderTop = "5px solid #F44336";
+                container.innerHTML = `<div class="error-icon">❌</div><h1 style="color: #F44336;">Erreur</h1><p>Vous avez déjà soumis votre réponse, ou une erreur technique s'est produite.</p>`;
+            }
+        })
+        .catch(error => {
+            container.style.borderTop = "5px solid #FF9800";
+            container.innerHTML = `<div class="error-icon" style="color: #FF9800;">📶</div><h1 style="color: #FF9800;">Problème de connexion</h1><p>Impossible de joindre le serveur. Veuillez vérifier votre connexion.</p>`;
+        });
+    }
 </script>
 
 </body>
