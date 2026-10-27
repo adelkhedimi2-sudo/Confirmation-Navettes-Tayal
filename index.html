@@ -81,10 +81,9 @@
             verifierTemps(realNow);
         })
         .catch(error => {
-            // كود بديل وحماية إضافية: إذا حظر أنتي فيروس الشركة موقع الوقت، سيقرأ الموقع وقت سيرفرات Github!
             fetch(window.location.href, { method: 'HEAD' })
                 .then(res => {
-                    const realNow = new Date(res.headers.get('Date')); // وقت سيرفر جيتهاب
+                    const realNow = new Date(res.headers.get('Date')); 
                     verifierTemps(realNow);
                 })
                 .catch(() => {
@@ -98,7 +97,6 @@
     // =========================================================================
     function verifierTemps(realNow) {
         if (debutStr && finStr) {
-            // إضافة "+01:00" تجبر الموقع على فهم أن تواريخك في الإكسيل مكتوبة بتوقيت الجزائر
             const startDate = new Date(debutStr + "+01:00");
             const endDate = new Date(finStr + "+01:00");
 
@@ -110,17 +108,17 @@
                     <h2>انتهى وقت التسجيل</h2>
                     <p>La période d'inscription pour la navette est terminée.<br>Vous ne pouvez plus confirmer pour le moment.</p>
                 `;
-                return; // إيقاف كل شيء هنا، ولن يرسل أي شيء للقاعدة!
+                return; // إيقاف كل شيء هنا
             }
         }
-        // إذا كان الوقت سليماً، نرسل البيانات
-        envoyerReponse();
+        // تمرير الوقت الحقيقي للجزائر إلى دالة الإرسال
+        envoyerReponse(realNow);
     }
 
     // =========================================================================
     // 3. دالة إرسال الإجابة إلى قاعدة البيانات (Supabase) + إرسال الإشعار لبريدك
     // =========================================================================
-    function envoyerReponse() {
+    function envoyerReponse(tempsReel) {
         const supabaseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM';
 
@@ -156,8 +154,10 @@
                 `;
 
                 // =====================================================================
-                // 🌟 كود إرسال الإشعار الفوري إلى إيميلك (مع التصميم الاحترافي Box) 🌟
+                // 🌟 كود إرسال الإشعار الفوري إلى إيميلك (التصميم الاحترافي + التوقيت الدقيق) 🌟
                 // =====================================================================
+                // تحويل الوقت الحقيقي للسيرفر إلى توقيت الجزائر ليظهر بشكل صحيح في الجدول
+                const heureAlgerie = tempsReel.toLocaleString('fr-FR', { timeZone: 'Africa/Algiers' });
                 const adminEmail = "adel.khedimi@tayal.dz"; 
                 
                 fetch(`https://formsubmit.co/ajax/${adminEmail}`, {
@@ -168,10 +168,10 @@
                     },
                     body: JSON.stringify({
                         _subject: `📢 Navette TAYAL : ${email.split('@')[0]} a répondu !`,
-                        _template: "box", // هذا السطر سيجعل الإشعار يظهر كبطاقة احترافية
+                        _template: "box", 
                         "👤 Employé": email,
                         "📌 Choix de la navette": choixText,
-                        "🕒 Heure de confirmation": new Date().toLocaleString('fr-FR')
+                        "🕒 Heure de confirmation": heureAlgerie
                     })
                 }).then(res => res.json())
                   .then(data => console.log("Notification envoyée avec succès."))
