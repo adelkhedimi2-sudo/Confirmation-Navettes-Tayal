@@ -5,65 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Confirmation Navette - TAYAL</title>
     <style>
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background-color: #f0f2f5; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            min-height: 100vh; 
-            margin: 0; 
-            padding: 20px; 
-            box-sizing: border-box;
-        }
-        .container { 
-            background-color: white; 
-            padding: 40px; 
-            border-radius: 10px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
-            text-align: center; 
-            max-width: 500px; 
-            width: 100%; 
-            border-top: 5px solid #003366; 
-        }
-        .spinner { 
-            border: 4px solid #f3f3f3; 
-            border-top: 4px solid #003366; 
-            border-radius: 50%; 
-            width: 40px; 
-            height: 40px; 
-            animation: spin 1s linear infinite; 
-            margin: 20px auto; 
-        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box;}
+        .container { background-color: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; max-width: 500px; width: 100%; border-top: 5px solid #003366; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #003366; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .success-icon { color: #4CAF50; font-size: 55px; margin-bottom: 10px; }
         .error-icon { color: #F44336; font-size: 55px; margin-bottom: 10px; }
         h1 { color: #003366; margin-bottom: 10px; }
         p { color: #666; line-height: 1.6; font-size: 16px; }
-        
-        /* تصميم استمارة تغيير الوجهة */
         .form-group { text-align: left; margin-bottom: 20px; }
         .form-group label { display: block; font-weight: bold; margin-bottom: 8px; color: #333; }
-        .form-group input, .form-group select { 
-            width: 100%; 
-            padding: 12px; 
-            border: 1px solid #ccc; 
-            border-radius: 6px; 
-            font-size: 16px; 
-            box-sizing: border-box;
-        }
-        .btn-submit { 
-            background-color: #003366; 
-            color: white; 
-            border: none; 
-            padding: 15px 30px; 
-            font-size: 16px; 
-            font-weight: bold; 
-            border-radius: 6px; 
-            cursor: pointer; 
-            width: 100%; 
-            transition: 0.3s;
-        }
+        .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; box-sizing: border-box;}
+        .btn-submit { background-color: #003366; color: white; border: none; padding: 15px 30px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; transition: 0.3s;}
         .btn-submit:hover { background-color: #FF9800; }
     </style>
 </head>
@@ -93,26 +46,17 @@
         throw new Error("Paramètres manquants.");
     }
 
-    // 1. جلب الوقت الفعلي
+    // 1. جلب الوقت الفعلي للإنترنت
     fetch('https://worldtimeapi.org/api/timezone/Africa/Algiers')
         .then(res => { if (!res.ok) throw new Error(); return res.json(); })
-        .then(data => { 
-            realTimeGlobal = new Date(data.datetime); 
-            verifierTemps(realTimeGlobal); 
-        })
+        .then(data => { realTimeGlobal = new Date(data.datetime); verifierTemps(realTimeGlobal); })
         .catch(() => {
             fetch(window.location.href, { method: 'HEAD' })
-                .then(res => { 
-                    realTimeGlobal = new Date(res.headers.get('Date')); 
-                    verifierTemps(realTimeGlobal); 
-                })
-                .catch(() => { 
-                    container.style.borderTop = "5px solid #FF9800";
-                    container.innerHTML = `<div class="error-icon">📶</div><h1 style="color: #FF9800;">Erreur Réseau</h1><p>Veuillez vérifier votre connexion internet.</p>`; 
-                });
+                .then(res => { realTimeGlobal = new Date(res.headers.get('Date')); verifierTemps(realTimeGlobal); })
+                .catch(() => { container.innerHTML = `<div class="error-icon">📶</div><h1 style="color: #FF9800;">Erreur Réseau</h1>`; });
         });
 
-    // 2. التحقق من الوقت
+    // 2. التحقق من الصلاحية 
     function verifierTemps(realNow) {
         if (debutStr && finStr && finAnnulStr) {
             const startDate = new Date(debutStr + "+01:00");
@@ -144,11 +88,7 @@
 
     function afficherErreur(message) {
         container.style.borderTop = "5px solid #F44336";
-        container.innerHTML = `
-            <div class="error-icon">⏳</div>
-            <h1 style="color: #F44336;">Délai Expiré</h1>
-            <p>${message}<br>Vous ne pouvez plus effectuer cette action pour le moment.</p>
-        `;
+        container.innerHTML = `<div class="error-icon">⏳</div><h1 style="color: #F44336;">Délai Expiré</h1><p>${message}</p>`;
     }
 
     function determinerTexteChoix(typeChoix, destination) {
@@ -157,10 +97,9 @@
         if (typeChoix === "Depart") prefix = "Départ";
         else if (typeChoix === "Retour") prefix = "Retour";
         else if (typeChoix === "Depart_Retour") prefix = "Départ / Retour";
-        return `${prefix} (Vers: ${destination})`;
+        return `${prefix} (Vers: ${destination || "Non Spécifiée"})`;
     }
 
-    // 3. واجهة تغيير الوجهة
     function afficherFormulaireChangement() {
         container.style.borderTop = "5px solid #003366";
         container.innerHTML = `
@@ -189,42 +128,47 @@
     window.soumettreChangement = function() {
         const nouvelleDest = document.getElementById('inputNewDest').value.trim();
         const nouveauTrajet = document.getElementById('selectTrajet').value;
-        
-        if (nouvelleDest === "") {
-            alert("Veuillez saisir votre nouvelle destination."); return;
-        }
-
+        if (nouvelleDest === "") { alert("Veuillez saisir votre nouvelle destination."); return; }
         container.innerHTML = `<p>Enregistrement en cours...</p><div class="spinner"></div>`;
-        
         let choixFinalText = determinerTexteChoix(nouveauTrajet, nouvelleDest) + " [MODIFIÉ]";
         envoyerReponse(realTimeGlobal, choixFinalText);
     }
 
-    // 4. إرسال الإجابة (تحديث أو إضافة)
+    // =========================================================================
+    // 4. تقنية (GET ثم POST/PATCH) لتجاوز حماية Supabase
+    // =========================================================================
     function envoyerReponse(tempsReel, choixFinalEnregistre) {
-        // 🌟 إضافة on_conflict لتمكين التحديث (UPSERT) بدلاً من الخطأ 🌟
-        const supabaseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses?on_conflict=email_employe';
+        const baseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM';
-
-        const data = {
-            email_employe: email,
-            choix: choixFinalEnregistre
+        
+        const headers = {
+            'apikey': supabaseKey,
+            'Authorization': 'Bearer ' + supabaseKey,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
         };
 
-        fetch(supabaseUrl, {
-            method: 'POST',
-            headers: {
-                'apikey': supabaseKey,
-                'Authorization': 'Bearer ' + supabaseKey,
-                'Content-Type': 'application/json',
-                // 🌟 هذا السطر يخبر القاعدة بتحديث البيانات القديمة بدلاً من رفضها 🌟
-                'Prefer': 'resolution=merge-duplicates' 
-            },
-            body: JSON.stringify(data)
+        const data = { email_employe: email, choix: choixFinalEnregistre };
+
+        // أ. الفحص هل العامل موجود مسبقاً أم لا
+        fetch(`${baseUrl}?email_employe=eq.${email}`, { method: 'GET', headers: { 'apikey': supabaseKey, 'Authorization': 'Bearer ' + supabaseKey } })
+        .then(res => res.json())
+        .then(existingData => {
+            let reqMethod = 'POST'; // افتراضياً سنقوم بإضافة جديدة
+            let finalUrl = baseUrl;
+            
+            // إذا كان موجوداً مسبقاً، نغير الأمر إلى تحديث (PATCH)
+            if (existingData && existingData.length > 0) {
+                reqMethod = 'PATCH';
+                finalUrl = `${baseUrl}?email_employe=eq.${email}`;
+            }
+
+            // ب. إرسال الطلب (إما إضافة أو تحديث)
+            return fetch(finalUrl, { method: reqMethod, headers: headers, body: JSON.stringify(data) });
         })
         .then(response => {
-            if (response.ok || response.status === 201) {
-                
+            // الاستجابة 204 و 201 و 200 كلها تعني نجاح العملية
+            if (response.ok || response.status === 201 || response.status === 204) {
                 container.style.borderTop = "5px solid #4CAF50";
                 container.innerHTML = `
                     <div class="success-icon">✔️</div>
@@ -239,10 +183,7 @@
                 
                 fetch(`https://formsubmit.co/ajax/${adminEmail}`, {
                     method: "POST",
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                     body: JSON.stringify({
                         _subject: `📢 Navette TAYAL : ${email.split('@')[0]} a répondu !`,
                         _template: "table",
@@ -251,15 +192,13 @@
                         "🕒 Heure (Algérie)": heureAlgerie
                     })
                 });
-
             } else {
-                container.style.borderTop = "5px solid #F44336";
-                container.innerHTML = `<div class="error-icon">❌</div><h1 style="color: #F44336;">Erreur</h1><p>Impossible d'enregistrer. Une erreur technique s'est produite.</p>`;
+                throw new Error("Erreur serveur");
             }
         })
         .catch(error => {
-            container.style.borderTop = "5px solid #FF9800";
-            container.innerHTML = `<div class="error-icon">📶</div><h1 style="color: #FF9800;">Problème de connexion</h1><p>Impossible de joindre le serveur.</p>`;
+            container.style.borderTop = "5px solid #F44336";
+            container.innerHTML = `<div class="error-icon">❌</div><h1 style="color: #F44336;">Erreur</h1><p>Impossible d'enregistrer. Une erreur technique s'est produite.</p>`;
         });
     }
 </script>
