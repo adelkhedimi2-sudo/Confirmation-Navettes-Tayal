@@ -88,15 +88,16 @@
         const baseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM';
 
-        const queryUrl = `${baseUrl}?email_employe=eq.${encodeURIComponent(email)}&_t=${new Date().getTime()}`;
+        // 🌟 التعديل السحري هنا: تم إزالة _t وتم استخدام cache: 'no-store' 🌟
+        const queryUrl = `${baseUrl}?email_employe=eq.${encodeURIComponent(email)}`;
 
         fetch(queryUrl, {
             method: 'GET',
             headers: { 
                 'apikey': supabaseKey, 
-                'Authorization': 'Bearer ' + supabaseKey,
-                'Cache-Control': 'no-cache'
-            }
+                'Authorization': 'Bearer ' + supabaseKey
+            },
+            cache: 'no-store' // يمنع المتصفح من استخدام الذاكرة المخبأة بدون إحداث خطأ 400
         })
         .then(res => {
             if (!res.ok) throw new Error(`GET HTTP Error: ${res.status}`);
