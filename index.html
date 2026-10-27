@@ -56,7 +56,7 @@
                 .catch(() => { container.innerHTML = `<div class="error-icon">📶</div><h1 style="color: #FF9800;">Erreur Réseau</h1>`; });
         });
 
-    // 2. التحقق من الصلاحية الزمنية
+    // 2. التحقق من الصلاحية 
     function verifierTemps(realNow) {
         if (debutStr && finStr && finAnnulStr) {
             const startDate = new Date(debutStr + "+01:00");
@@ -77,7 +77,7 @@
                 }
             }
         }
-        verifierStatutEmploye(realNow); // الذهاب لفحص القاعدة لمعرفة ماضيه
+        verifierStatutEmploye(realNow);
     }
 
     function afficherErreurTemps(message) {
@@ -86,30 +86,49 @@
     }
 
     // =========================================================================
-    // 3. نظام تتبع عدد التعديلات (التعديل لمرة واحدة فقط)
+    // 3. نظام تتبع صارم: يمنع المتصفح من الكذب بفضل (Cache-Busting)
     // =========================================================================
     function verifierStatutEmploye(tempsReel) {
         const baseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM';
 
-        fetch(`${baseUrl}?email_employe=eq.${email}`, {
+        // 🌟 إضافة وقت الدخول للرابط يجبر المتصفح على جلب الحقيقة من القاعدة وليس من ذاكرته المخبأة 🌟
+        const noCacheUrl = `${baseUrl}?email_employe=eq.${email}&_t=${new Date().getTime()}`;
+
+        fetch(noCacheUrl, {
             method: 'GET',
-            headers: { 'apikey': supabaseKey, 'Authorization': 'Bearer ' + supabaseKey }
+            headers: { 
+                'apikey': supabaseKey, 
+                'Authorization': 'Bearer ' + supabaseKey,
+                'Cache-Control': 'no-cache'
+            }
         })
         .then(res => res.json())
         .then(data => {
             if (data && data.length > 0) {
-                const ancienChoix = data[0].choix;
+                // فحص جميع محاولات العامل السابقة للبحث عن كلمة [MODIFIÉ]
+                const aFaitUneModif = data.some(row => row.choix && row.choix.includes("[MODIFIÉ]"));
+                const dernierChoix = data[data.length - 1].choix;
 
-                // إذا كان قد قام بتعديل مسبق، سيجد الكود كلمة [MODIFIÉ] ويمنعه
-                if (ancienChoix.includes("[MODIFIÉ]")) {
+                if (aFaitUneModif) {
+                    let destFinale = destStr || "Non Spécifiée";
+                    let choixActuelTest = determinerTexteChoix(choix, destFinale) + " [MODIFIÉ]";
+                    
+                    // إذا ضغط نفس الزر بالخطأ مرتين بعد تعديله لا نعاقبه
+                    if (dernierChoix === choixActuelTest && choix !== "Changer") {
+                        container.style.borderTop = "5px solid #4CAF50";
+                        container.innerHTML = `<div class="success-icon">✔️</div><h1 style="color: #4CAF50;">Déjà Enregistré</h1><p>Votre choix est déjà enregistré.</p>`;
+                        return;
+                    }
+                    
+                    // طرد العامل وتجاهل أي ضغطة جديدة
                     afficherErreurModif();
                 } else {
-                    // موجود ولكنه لم يغير بعد -> نظهر له التحذير الأخير
-                    afficherAvertissementModification(tempsReel, ancienChoix);
+                    // لم يعدل من قبل -> إظهار التحذير
+                    afficherAvertissementModification(tempsReel, dernierChoix);
                 }
             } else {
-                // المرة الأولى إطلاقاً
+                // أول مرة يدخل 
                 traiterNouveauChoix(tempsReel, false);
             }
         })
@@ -118,18 +137,16 @@
         });
     }
 
-    // واجهة الطرد عند تجاوز الحد
     function afficherErreurModif() {
         container.style.borderTop = "5px solid #F44336";
         container.innerHTML = `
             <div class="error-icon">❌</div>
             <h1 style="color: #F44336;">Modification Refusée</h1>
             <p>Vous avez déjà utilisé votre droit de modification <b>unique</b>.</p>
-            <p>Votre choix précédent est définitif.</p>
+            <p>Votre choix précédent est définitif et ne peut plus être changé.</p>
         `;
     }
 
-    // واجهة التحذير من التعديل الأخير
     function afficherAvertissementModification(tempsReel, ancienChoix) {
         if (choix === "Changer") {
             afficherFormulaireChangement(tempsReel, true);
@@ -137,7 +154,6 @@
             let destFinale = destStr || "Non Spécifiée";
             let nouveauChoixTexte = determinerTexteChoix(choix, destFinale);
 
-            // إذا ضغط العامل على نفس الزر مرتين بالخطأ، لا نعاقبه ولا نحسبها تعديلاً
             if (ancienChoix === nouveauChoixTexte) {
                 container.style.borderTop = "5px solid #4CAF50";
                 container.innerHTML = `
@@ -169,7 +185,6 @@
         }
     }
 
-    // تجهيز النصوص
     function traiterNouveauChoix(tempsReel, isModification) {
         if (choix === "Changer") {
             afficherFormulaireChangement(tempsReel, isModification);
@@ -259,9 +274,6 @@
         }
     }
 
-    // =========================================================================
-    // 4. تنفيذ الأمر في Supabase والإشعار
-    // =========================================================================
     function executerEnregistrement(tempsReel, choixFinalEnregistre, actionBtn, destFinale, reqMethod) {
         const baseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM';
