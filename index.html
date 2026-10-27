@@ -57,7 +57,7 @@
                 .catch(() => { container.innerHTML = `<div class="error-icon">📶</div><h1 style="color: #FF9800;">Erreur Réseau</h1>`; });
         });
 
-    // 2. التحقق من الصلاحية 
+    // 2. التحقق من الصلاحية الزمنية
     function verifierTemps(realNow) {
         if (debutStr && finStr && finAnnulStr) {
             const startDate = new Date(debutStr + "+01:00");
@@ -87,16 +87,16 @@
     }
 
     // =========================================================================
-    // 3. نظام التتبع الصارم (بدون أسئلة عند الإلغاء، ومع تحذير في حال التغيير)
+    // 3. نظام التتبع الذكي (إلغاء فوري + رسالة برتقالية + تحذير المرة الأخيرة)
     // =========================================================================
     function verifierStatutEmploye(tempsReel) {
         const baseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM';
 
-        const emailEncoded = encodeURIComponent(email);
-        const noCacheUrl = `${baseUrl}?email_employe=eq.${emailEncoded}&_t=${new Date().getTime()}`;
+        // هذا السطر يمنع المتصفح من الكذب ويجبره على قراءة القاعدة الفعلية
+        const queryUrl = `${baseUrl}?email_employe=eq.${email}&_t=${new Date().getTime()}`;
 
-        fetch(noCacheUrl, {
+        fetch(queryUrl, {
             method: 'GET',
             headers: { 
                 'apikey': supabaseKey, 
@@ -104,16 +104,14 @@
                 'Cache-Control': 'no-cache'
             }
         })
-        .then(res => {
-            if (!res.ok) throw new Error("GET_FAILED");
-            return res.json();
-        })
+        .then(res => res.json())
         .then(data => {
             if (data && data.length > 0) {
-                const ancienChoix = data[0].choix || "";
+                // العامل موجود في القاعدة
+                const ancienChoix = data[data.length - 1].choix || "";
                 const hasModif = ancienChoix.includes("[MODIFIÉ]");
 
-                // 🌟 أ. حالة الإلغاء (يُلغى فوراً بدون أسئلة، ويبقى حقه في التغيير محفوظاً إذا لم يستهلكه) 🌟
+                // 🌟 حالة 1: الضغط على الإلغاء (يتم فوراً بدون أسئلة) 🌟
                 if (choix === "Pas_De_Navette") {
                     if (ancienChoix.startsWith("Annulation")) {
                         afficherDejaEnregistre("Annulation");
@@ -123,6 +121,7 @@
                     let textToSave = "Annulation";
                     let actionBtn = determinerAction("Pas_De_Navette");
                     
+                    // إذا استهلك حقه في التغيير سابقاً نُبقي على علامة المنع
                     if (hasModif) {
                         textToSave += " [MODIFIÉ]";
                         actionBtn += " (Modifié)";
@@ -134,45 +133,54 @@
                     return;
                 }
 
-                // 🌟 ب. حالة اختيار رحلة أخرى أو تغيير الوجهة 🌟
+                // 🌟 حالة 2: اختيار رحلة أخرى أو تغيير الوجهة 🌟
                 let destFinale = destStr ? destStr.trim() : "Non Spécifiée";
                 let nouveauChoixTexte = determinerTexteChoix(choix, destFinale);
 
+                // إذا استهلك حقه في التغيير (يملك علامة MODIFIÉ)
                 if (hasModif) {
-                    let choixTest = nouveauChoixTexte + " [MODIFIÉ]";
-                    if (ancienChoix === choixTest && choix !== "Changer") {
+                    if (ancienChoix === (nouveauChoixTexte + " [MODIFIÉ]") && choix !== "Changer") {
                         afficherDejaEnregistre(nouveauChoixTexte);
                     } else {
-                        afficherErreurModif();
+                        afficherErreurModif(); // طرد
                     }
                     return;
                 }
 
+                // إذا ضغط على نفس اختياره الحالي (الرسالة البرتقالية)
                 if (ancienChoix === nouveauChoixTexte && choix !== "Changer") {
                     afficherDejaEnregistre(nouveauChoixTexte);
                     return;
                 }
 
-                afficherAvertissementModification(tempsReel, ancienChoix);
+                // إذا أراد تغيير رحلته ولم يستهلك حقه بعد -> (تحذير المرة الأخيرة)
+                afficherAvertissementModification(tempsReel, ancienChoix, nouveauChoixTexte);
 
             } else {
+                // العامل يسجل لأول مرة إطلاقاً
                 traiterNouveauChoix(tempsReel, false);
             }
         })
-        .catch(err => {
+        .catch(() => {
             container.innerHTML = `<div class="error-icon">📶</div><h1 style="color: #FF9800;">Erreur Réseau</h1><p>Impossible de vérifier l'historique.</p>`;
         });
     }
 
+    // 🌟 واجهة (لقد قمت بالفعل باختيار) البرتقالية 🌟
     function afficherDejaEnregistre(texte) {
+        let cleanText = texte.replace(" [MODIFIÉ]", "");
         container.style.borderTop = "5px solid #FF9800";
         container.innerHTML = `
             <div class="error-icon" style="color:#FF9800;">⚠️</div>
             <h1 style="color: #FF9800;">Déjà Enregistré !</h1>
-            <p>Votre choix <b>${texte}</b> est déjà enregistré.</p>
+            <p style="font-size: 18px; font-weight: bold; color: #FF9800; margin-bottom: 5px;">لقد قمت بالفعل باختيار :</p>
+            <div style="background-color: #fff3e0; padding: 15px; border-radius: 8px; border-left: 5px solid #FF9800; display: inline-block; margin-top: 10px;">
+                <b style="color: #FF9800; font-size: 18px;">${cleanText}</b>
+            </div>
         `;
     }
 
+    // واجهة (ممنوع التغيير)
     function afficherErreurModif() {
         container.style.borderTop = "5px solid #F44336";
         container.innerHTML = `
@@ -183,37 +191,100 @@
         `;
     }
 
-    function afficherAvertissementModification(tempsReel, ancienChoix) {
+    // واجهة (التحذير الأخير قبل تغيير الرحلة)
+    function afficherAvertissementModification(tempsReel, ancienChoix, nouveauChoixTexte) {
+        let cleanAncien = ancienChoix.replace(" [MODIFIÉ]", "");
+        container.style.borderTop = "5px solid #FF9800";
+        
+        let destinationForm = "";
         if (choix === "Changer") {
-            afficherFormulaireChangement(tempsReel, true);
+            destinationForm = `
+                <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
+                <div class="form-group">
+                    <label>Nouvelle Destination :</label>
+                    <input type="text" id="inputNewDest" placeholder="Ex: Oran, Chlef, Alger..." required>
+                </div>
+                <div class="form-group">
+                    <label>Trajet souhaité :</label>
+                    <select id="selectTrajet">
+                        <option value="Depart">Départ uniquement</option>
+                        <option value="Retour">Retour uniquement</option>
+                        <option value="Depart_Retour" selected>Départ et Retour</option>
+                    </select>
+                </div>
+                <div style="background-color: #fff3e0; padding: 10px; border-left: 4px solid #FF9800; margin: 15px 0; text-align: left; font-size:14px;">
+                    <b style="color: #d84315;">Note Importante :</b> Ceci sera votre <u>dernière modification autorisée</u>.
+                </div>
+                <button class="btn-submit" style="background-color: #FF9800;" onclick="soumettreChangementModif()">Confirmer la modification définitive</button>
+            `;
         } else {
-            let destFinale = destStr ? destStr.trim() : "Non Spécifiée";
-            let nouveauChoixTexte = determinerTexteChoix(choix, destFinale);
-
-            container.style.borderTop = "5px solid #FF9800";
-            container.innerHTML = `
-                <div class="error-icon" style="color:#FF9800;">⚠️</div>
-                <h1 style="color: #FF9800;">Attention</h1>
-                <p>Vous avez déjà enregistré : <br><b>${ancienChoix}</b></p>
+            destinationForm = `
                 <p>Voulez-vous vraiment changer vers : <br><b style="color:#003366;">${nouveauChoixTexte}</b> ?</p>
-                
                 <div style="background-color: #fff3e0; padding: 10px; border-left: 4px solid #FF9800; margin: 15px 0; text-align: left; font-size:14px;">
                     <b style="color: #d84315;">Note Importante :</b> Ceci sera votre <u>dernière modification autorisée</u>. Vous ne pourrez plus changer de navette après (sauf pour annuler).
                 </div>
-                
                 <button class="btn-submit" style="background-color: #FF9800;" onclick="confirmerModifDefinitive()">Confirmer la modification définitive</button>
             `;
+        }
 
-            window.confirmerModifDefinitive = function() {
-                container.innerHTML = `<p>Enregistrement en cours...</p><div class="spinner"></div>`;
-                traiterNouveauChoix(tempsReel, true); 
-            }
+        container.innerHTML = `
+            <div class="error-icon" style="color:#FF9800;">⚠️</div>
+            <h1 style="color: #FF9800;">Attention</h1>
+            <p>Vous avez déjà enregistré : <br><b>${cleanAncien}</b></p>
+            ${destinationForm}
+        `;
+
+        window.confirmerModifDefinitive = function() {
+            container.innerHTML = `<p>Enregistrement en cours...</p><div class="spinner"></div>`;
+            traiterNouveauChoix(tempsReel, true); 
+        }
+
+        window.soumettreChangementModif = function() {
+            const nouvelleDest = document.getElementById('inputNewDest').value.trim();
+            const nouveauTrajet = document.getElementById('selectTrajet').value;
+            if (nouvelleDest === "") { alert("Veuillez saisir votre nouvelle destination."); return; }
+            container.innerHTML = `<p>Enregistrement en cours...</p><div class="spinner"></div>`;
+            let finalTxt = determinerTexteChoix(nouveauTrajet, nouvelleDest) + " [MODIFIÉ]";
+            let finalAction = determinerAction(nouveauTrajet) + " (Modifié)";
+            executerEnregistrement(tempsReel, finalTxt, finalAction, nouvelleDest, 'PATCH');
         }
     }
 
     function traiterNouveauChoix(tempsReel, isModification) {
         if (choix === "Changer") {
-            afficherFormulaireChangement(tempsReel, isModification);
+            container.style.borderTop = "5px solid #003366";
+            container.innerHTML = `
+                <h1>Modifier la destination</h1>
+                <p>Votre destination actuelle : <b style="color:#2196F3;">${destStr || "Non Spécifiée"}</b></p>
+                <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
+                <div class="form-group">
+                    <label>Nouvelle Destination :</label>
+                    <input type="text" id="inputNewDest" placeholder="Ex: Oran, Chlef, Alger..." required>
+                </div>
+                <div class="form-group">
+                    <label>Trajet souhaité :</label>
+                    <select id="selectTrajet">
+                        <option value="Depart">Départ uniquement</option>
+                        <option value="Retour">Retour uniquement</option>
+                        <option value="Depart_Retour" selected>Départ et Retour</option>
+                    </select>
+                </div>
+                <button class="btn-submit" onclick="soumettreNouveauChangement()">Enregistrer</button>
+            `;
+            
+            window.soumettreNouveauChangement = function() {
+                const nouvelleDest = document.getElementById('inputNewDest').value.trim();
+                const nouveauTrajet = document.getElementById('selectTrajet').value;
+                if (nouvelleDest === "") { alert("Veuillez saisir votre nouvelle destination."); return; }
+                container.innerHTML = `<p>Enregistrement en cours...</p><div class="spinner"></div>`;
+                
+                let finalTxt = determinerTexteChoix(nouveauTrajet, nouvelleDest);
+                let finalAction = determinerAction(nouveauTrajet);
+                let reqMethod = isModification ? 'PATCH' : 'POST';
+                if (isModification) { finalTxt += " [MODIFIÉ]"; finalAction += " (Modifié)"; }
+                
+                executerEnregistrement(tempsReel, finalTxt, finalAction, nouvelleDest, reqMethod);
+            }
         } else {
             let destFinale = destStr ? destStr.trim() : "Non Spécifiée";
             let choixFinalText = determinerTexteChoix(choix, destFinale);
@@ -246,67 +317,17 @@
         return typeChoix;
     }
 
-    function afficherFormulaireChangement(tempsReel, isModification) {
-        container.style.borderTop = "5px solid #003366";
-        let warningHtml = "";
-        if (isModification) {
-            warningHtml = `
-                <div style="background-color: #fff3e0; padding: 10px; border-left: 4px solid #FF9800; margin: 15px 0; text-align: left; font-size: 14px;">
-                    <b style="color: #d84315;">Attention :</b> Vous avez déjà enregistré un choix. Ceci sera votre <u>dernière modification autorisée</u>.
-                </div>
-            `;
-        }
-
-        container.innerHTML = `
-            <h1>Modifier la destination</h1>
-            <p>Votre destination actuelle : <b style="color:#2196F3;">${destStr || "Non Spécifiée"}</b></p>
-            ${warningHtml}
-            <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
-
-            <div class="form-group">
-                <label>Nouvelle Destination :</label>
-                <input type="text" id="inputNewDest" placeholder="Ex: Oran, Chlef, Alger..." required>
-            </div>
-
-            <div class="form-group">
-                <label>Trajet souhaité :</label>
-                <select id="selectTrajet">
-                    <option value="Depart">Départ uniquement</option>
-                    <option value="Retour">Retour uniquement</option>
-                    <option value="Depart_Retour" selected>Départ et Retour</option>
-                </select>
-            </div>
-
-            <button class="btn-submit" onclick="soumettreChangement()">Enregistrer la modification</button>
-        `;
-
-        window.soumettreChangement = function() {
-            const nouvelleDest = document.getElementById('inputNewDest').value.trim();
-            const nouveauTrajet = document.getElementById('selectTrajet').value;
-            if (nouvelleDest === "") { alert("Veuillez saisir votre nouvelle destination."); return; }
-
-            container.innerHTML = `<p>Enregistrement en cours...</p><div class="spinner"></div>`;
-
-            let choixFinalText = determinerTexteChoix(nouveauTrajet, nouvelleDest);
-            let actionBtn = determinerAction(nouveauTrajet);
-            let reqMethod = isModification ? 'PATCH' : 'POST';
-
-            if (isModification) {
-                choixFinalText += " [MODIFIÉ]";
-                actionBtn += " (Modifié)";
-            }
-
-            executerEnregistrement(tempsReel, choixFinalText, actionBtn, nouvelleDest, reqMethod);
-        }
-    }
-
+    // =========================================================================
+    // 4. تنفيذ الأمر في Supabase وإرسال الإشعار
+    // =========================================================================
     function executerEnregistrement(tempsReel, choixFinalEnregistre, actionBtn, destFinale, reqMethod) {
         const baseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM';
 
+        // إصلاح خطأ الرابط: نستخدم الإيميل مباشرة في الرابط لتفادي أخطاء التشفير
         let finalUrl = baseUrl;
         if (reqMethod === 'PATCH') {
-            finalUrl = `${baseUrl}?email_employe=eq.${encodeURIComponent(email)}`;
+            finalUrl = `${baseUrl}?email_employe=eq.${email}`;
         }
 
         const headers = {
@@ -345,14 +366,14 @@
                         "📍 Destination": destFinale,
                         "🕒 Heure (Algérie)": heureAlgerie
                     })
-                }).catch(() => console.log("FormSubmit Notification non envoyée"));
+                });
             } else {
-                throw new Error(response.status);
+                throw new Error("HTTP " + response.status);
             }
         })
         .catch(error => {
             container.style.borderTop = "5px solid #F44336";
-            container.innerHTML = `<div class="error-icon">❌</div><h1 style="color: #F44336;">Erreur</h1><p>Impossible d'enregistrer. (Code: ${error.message})</p>`;
+            container.innerHTML = `<div class="error-icon">❌</div><h1 style="color: #F44336;">Erreur</h1><p>Impossible d'enregistrer.</p>`;
         });
     }
 </script>
