@@ -41,7 +41,7 @@
         h1 { color: #003366; margin-bottom: 10px; }
         p { color: #666; line-height: 1.6; font-size: 16px; }
         
-        /* 🌟 تصميم استمارة تغيير الوجهة 🌟 */
+        /* تصميم استمارة تغيير الوجهة */
         .form-group { text-align: left; margin-bottom: 20px; }
         .form-group label { display: block; font-weight: bold; margin-bottom: 8px; color: #333; }
         .form-group input, .form-group select { 
@@ -76,14 +76,13 @@
 </div>
 
 <script>
-    // جلب البيانات من رابط الإيميل
     const urlParams = new URLSearchParams(window.location.search);
     const email = urlParams.get('email');
     const choix = urlParams.get('choix');
     const debutStr = urlParams.get('debut');
     const finStr = urlParams.get('fin');
-    const finAnnulStr = urlParams.get('finAnnul'); // وقت الإلغاء المستقل
-    const destStr = urlParams.get('dest');         // الوجهة الحالية للعامل
+    const finAnnulStr = urlParams.get('finAnnul'); 
+    const destStr = urlParams.get('dest');         
 
     const container = document.getElementById('main-container');
     let realTimeGlobal = null;
@@ -94,9 +93,7 @@
         throw new Error("Paramètres manquants.");
     }
 
-    // =========================================================================
-    // 1. جلب الوقت الفعلي للإنترنت (توقيت الجزائر)
-    // =========================================================================
+    // 1. جلب الوقت الفعلي
     fetch('https://worldtimeapi.org/api/timezone/Africa/Algiers')
         .then(res => { if (!res.ok) throw new Error(); return res.json(); })
         .then(data => { 
@@ -115,34 +112,28 @@
                 });
         });
 
-    // =========================================================================
-    // 2. التحقق من الصلاحية (فصل وقت التأكيد عن وقت الإلغاء)
-    // =========================================================================
+    // 2. التحقق من الوقت
     function verifierTemps(realNow) {
         if (debutStr && finStr && finAnnulStr) {
             const startDate = new Date(debutStr + "+01:00");
-            const endDateConf = new Date(finStr + "+01:00");       // G3: وقت التأكيد/التغيير
-            const endDateAnnul = new Date(finAnnulStr + "+01:00"); // G4: وقت الإلغاء
+            const endDateConf = new Date(finStr + "+01:00");       
+            const endDateAnnul = new Date(finAnnulStr + "+01:00"); 
 
             if (realNow < startDate) {
                 afficherErreur("Les inscriptions ne sont pas encore ouvertes."); return;
             }
 
-            // إذا اختار العامل "إلغاء الرحلة"، نقارن وقته مع وقت الإلغاء (G4)
             if (choix === "Pas_De_Navette") {
                 if (realNow > endDateAnnul) {
                     afficherErreur("Le délai d'annulation est expiré."); return;
                 }
-            } 
-            // إذا اختار تأكيد أو تغيير الوجهة، نقارن وقته مع وقت التأكيد (G3)
-            else {
+            } else {
                 if (realNow > endDateConf) {
                     afficherErreur("Le délai de confirmation est expiré."); return;
                 }
             }
         }
 
-        // توجيه العامل حسب الزر الذي ضغطه
         if (choix === "Changer") {
             afficherFormulaireChangement();
         } else {
@@ -151,7 +142,6 @@
         }
     }
 
-    // دالة إظهار رسالة الخطأ
     function afficherErreur(message) {
         container.style.borderTop = "5px solid #F44336";
         container.innerHTML = `
@@ -161,7 +151,6 @@
         `;
     }
 
-    // دالة دمج الاختيار مع الوجهة
     function determinerTexteChoix(typeChoix, destination) {
         if (typeChoix === "Pas_De_Navette") return "Annulation";
         let prefix = "";
@@ -171,9 +160,7 @@
         return `${prefix} (Vers: ${destination})`;
     }
 
-    // =========================================================================
-    // 3. إظهار نافذة تغيير الوجهة
-    // =========================================================================
+    // 3. واجهة تغيير الوجهة
     function afficherFormulaireChangement() {
         container.style.borderTop = "5px solid #003366";
         container.innerHTML = `
@@ -199,7 +186,6 @@
         `;
     }
 
-    // دالة حفظ الوجهة الجديدة
     window.soumettreChangement = function() {
         const nouvelleDest = document.getElementById('inputNewDest').value.trim();
         const nouveauTrajet = document.getElementById('selectTrajet').value;
@@ -214,11 +200,10 @@
         envoyerReponse(realTimeGlobal, choixFinalText);
     }
 
-    // =========================================================================
-    // 4. إرسال إلى Supabase والإشعار إلى إيميلك
-    // =========================================================================
+    // 4. إرسال الإجابة (تحديث أو إضافة)
     function envoyerReponse(tempsReel, choixFinalEnregistre) {
-        const supabaseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses';
+        // 🌟 إضافة on_conflict لتمكين التحديث (UPSERT) بدلاً من الخطأ 🌟
+        const supabaseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses?on_conflict=email_employe';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM';
 
         const data = {
@@ -232,14 +217,14 @@
                 'apikey': supabaseKey,
                 'Authorization': 'Bearer ' + supabaseKey,
                 'Content-Type': 'application/json',
-                'Prefer': 'return=minimal'
+                // 🌟 هذا السطر يخبر القاعدة بتحديث البيانات القديمة بدلاً من رفضها 🌟
+                'Prefer': 'resolution=merge-duplicates' 
             },
             body: JSON.stringify(data)
         })
         .then(response => {
             if (response.ok || response.status === 201) {
                 
-                // رسالة النجاح للعامل
                 container.style.borderTop = "5px solid #4CAF50";
                 container.innerHTML = `
                     <div class="success-icon">✔️</div>
@@ -248,7 +233,7 @@
                     <p>Votre choix <b style="color: #003366;">${choixFinalEnregistre}</b> a été enregistré.</p>
                 `;
 
-                // 🌟 إرسال الإشعار لبريدك بتنسيق جدول (Table) 🌟
+                // إرسال الإشعار
                 const heureAlgerie = tempsReel.toLocaleString('fr-FR', { timeZone: 'Africa/Algiers' });
                 const adminEmail = "adel.khedimi@tayal.dz"; 
                 
@@ -265,18 +250,16 @@
                         "📌 Détail du Choix": choixFinalEnregistre,
                         "🕒 Heure (Algérie)": heureAlgerie
                     })
-                }).then(res => res.json())
-                  .then(data => console.log("Notification envoyée avec succès."))
-                  .catch(err => console.log("Erreur lors de l'envoi de la notification."));
+                });
 
             } else {
                 container.style.borderTop = "5px solid #F44336";
-                container.innerHTML = `<div class="error-icon">❌</div><h1 style="color: #F44336;">Erreur</h1><p>Vous avez déjà soumis votre réponse, ou une erreur technique s'est produite.</p>`;
+                container.innerHTML = `<div class="error-icon">❌</div><h1 style="color: #F44336;">Erreur</h1><p>Impossible d'enregistrer. Une erreur technique s'est produite.</p>`;
             }
         })
         .catch(error => {
             container.style.borderTop = "5px solid #FF9800";
-            container.innerHTML = `<div class="error-icon" style="color: #FF9800;">📶</div><h1 style="color: #FF9800;">Problème de connexion</h1><p>Impossible de joindre le serveur. Veuillez vérifier votre connexion.</p>`;
+            container.innerHTML = `<div class="error-icon">📶</div><h1 style="color: #FF9800;">Problème de connexion</h1><p>Impossible de joindre le serveur.</p>`;
         });
     }
 </script>
