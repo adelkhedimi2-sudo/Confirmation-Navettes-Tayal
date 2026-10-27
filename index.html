@@ -156,7 +156,7 @@
                 `;
 
                 // =====================================================================
-                // 🌟 كود إرسال الإشعار الفوري إلى إيميلك 🌟
+                // 🌟 كود إرسال الإشعار الفوري إلى إيميلك (مع التصميم الاحترافي Box) 🌟
                 // =====================================================================
                 const adminEmail = "adel.khedimi@tayal.dz"; 
                 
@@ -168,9 +168,10 @@
                     },
                     body: JSON.stringify({
                         _subject: `📢 Navette TAYAL : ${email.split('@')[0]} a répondu !`,
-                        Employé: email,
-                        Choix_Sélectionné: choixText,
-                        Heure_Confirmation: new Date().toLocaleString('fr-FR')
+                        _template: "box", // هذا السطر سيجعل الإشعار يظهر كبطاقة احترافية
+                        "👤 Employé": email,
+                        "📌 Choix de la navette": choixText,
+                        "🕒 Heure de confirmation": new Date().toLocaleString('fr-FR')
                     })
                 }).then(res => res.json())
                   .then(data => console.log("Notification envoyée avec succès."))
