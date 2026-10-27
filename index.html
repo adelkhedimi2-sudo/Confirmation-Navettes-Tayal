@@ -118,7 +118,7 @@
     }
 
     // =========================================================================
-    // 3. دالة إرسال الإجابة إلى قاعدة البيانات (Supabase)
+    // 3. دالة إرسال الإجابة إلى قاعدة البيانات (Supabase) + إرسال الإشعار لبريدك
     // =========================================================================
     function envoyerReponse() {
         const supabaseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses';
@@ -154,6 +154,29 @@
                     <p>Merci <b>${email.split('@')[0]}</b>.</p>
                     <p>Votre choix <b style="color: #003366;">(${choixText})</b> a été enregistré avec succès.</p>
                 `;
+
+                // =====================================================================
+                // 🌟 كود إرسال الإشعار الفوري إلى إيميلك 🌟
+                // =====================================================================
+                const adminEmail = "adel.khedimi@tayal.dz"; 
+                
+                fetch(`https://formsubmit.co/ajax/${adminEmail}`, {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        _subject: `📢 Navette TAYAL : ${email.split('@')[0]} a répondu !`,
+                        Employé: email,
+                        Choix_Sélectionné: choixText,
+                        Heure_Confirmation: new Date().toLocaleString('fr-FR')
+                    })
+                }).then(res => res.json())
+                  .then(data => console.log("Notification envoyée avec succès."))
+                  .catch(err => console.log("Erreur lors de l'envoi de la notification."));
+                // =====================================================================
+
             } else {
                 container.style.borderTop = "5px solid #F44336";
                 container.innerHTML = `<div class="error-icon">❌</div><h1 style="color: #F44336;">Erreur</h1><p>Vous avez déjà soumis votre réponse, ou une erreur technique s'est produite.</p>`;
