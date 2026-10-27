@@ -88,17 +88,19 @@
         const baseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM';
 
-        // 🌟 التعديل هنا: إزالة التعقيدات التي ترفضها Supabase واستخدام الإيميل مباشرة 🌟
-        const queryUrl = `${baseUrl}?email_employe=eq.${email}`;
+        // استخدام URLSearchParams لضمان التشفير الصحيح 100% ومنع خطأ 400
+        const queryUrl = new URL(baseUrl);
+        queryUrl.searchParams.append('email_employe', `eq.${email}`);
+        queryUrl.searchParams.append('select', 'choix');
 
-        fetch(queryUrl, {
+        fetch(queryUrl.toString(), {
             method: 'GET',
             headers: { 
                 'apikey': supabaseKey, 
-                'Authorization': 'Bearer ' + supabaseKey
-                // تم إزالة Cache-Control نهائياً من هنا لكي لا يظهر خطأ 400
+                'Authorization': 'Bearer ' + supabaseKey,
+                'Accept': 'application/json'
             },
-            cache: 'no-store' // هذه الخاصية المخفية تكفي تماماً لتخطي الذاكرة المخبأة بأمان
+            cache: 'no-store' // كسر الكاش بأمان تام
         })
         .then(res => {
             if (!res.ok) throw new Error(`GET HTTP Error: ${res.status}`);
@@ -308,10 +310,9 @@
         const baseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM';
 
-        // 🌟 التعديل الثاني هنا: إزالة التعقيدات في رابط الـ PATCH أيضاً 🌟
-        let finalUrl = baseUrl;
+        const finalUrl = new URL(baseUrl);
         if (reqMethod === 'PATCH') {
-            finalUrl = `${baseUrl}?email_employe=eq.${email}`;
+            finalUrl.searchParams.append('email_employe', `eq.${email}`);
         }
 
         const headers = {
@@ -323,7 +324,7 @@
 
         const data = { email_employe: email, choix: choixFinalEnregistre };
 
-        fetch(finalUrl, { method: reqMethod, headers: headers, body: JSON.stringify(data) })
+        fetch(finalUrl.toString(), { method: reqMethod, headers: headers, body: JSON.stringify(data) })
         .then(response => {
             if (response.ok || response.status === 201 || response.status === 204) {
                 container.style.borderTop = "5px solid #4CAF50";
