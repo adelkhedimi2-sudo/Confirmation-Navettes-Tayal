@@ -46,19 +46,24 @@
         throw new Error("Parametres manquants.");
     }
 
-    // دالة لعرض رسالة "أنت غير موجود في القائمة" بشكل احترافي
+    // دالة لعرض رسالة "أنت غير موجود في القائمة" مع معلومات الاتصال بك بشكل جميل واحترافي
     function afficherNonExistent() {
         container.style.borderTop = "5px solid #F44336";
         container.innerHTML = `
             <div class="error-icon">❌</div>
             <h1 style="color: #F44336;">Accès Refusé</h1>
-            <p style="color: #c53030; font-weight: bold; font-size: 16px; line-height: 1.6; margin-top: 20px;">
+            <p style="color: #c53030; font-weight: bold; font-size: 16px; line-height: 1.6; margin-top: 15px;">
                 أنت غير موجود في قائمة العمال، يرجى الاتصال بمسؤول النقل ليتم إضافتك.
             </p>
+            <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 15px; margin-top: 20px; text-align: center;">
+                <div style="font-size: 12px; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 5px;">responsable transport</div>
+                <div style="color: #003366; font-size: 17px; font-weight: bold; margin-bottom: 4px;">ADEL KHEDIMI</div>
+                <div style="color: #d97706; font-size: 16px; font-weight: bold; direction: ltr;">📞 0560 11 27 97</div>
+            </div>
         `;
     }
 
-    // الخطوة 1: التحقق مما إذا كان الإيميل والتوكن مسجلين في جدول tokens_navette (يعني أنه ما زال في القائمة وتم إرسال إيميل حديث له)
+    // الخطوة 1: التحقق من التوكن وقائمة المصرح لهم
     const baseUrlToken = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/tokens_navette';
     const queryUrlToken = new URL(baseUrlToken);
     queryUrlToken.searchParams.append('email', `eq.${email}`);
@@ -78,25 +83,16 @@
         return res.json();
     })
     .then(data => {
-        // إذا لم يتم العثور على الإيميل في قاعدة البيانات (لأنه تم حذفه من Liste ولم يعد له توكن نشط)
-        if (!data || data.length === 0) {
+        if (!data || data.length === 0 || data[0].token !== tokenURL) {
             afficherNonExistent();
             throw new Error("Employe non autorise.");
         }
 
-        const dbToken = data[0].token;
-        if (dbToken && dbToken !== tokenURL) {
-            afficherLienExpire();
-            throw new Error("Lien expire.");
-        }
-
-        // إذا كان موجوداً وصحيحاً، نتابع العمل بشكل طبيعي
         lancerVerificationTempsEtStatut();
     })
     .catch(err => {
-        if (err.message !== "Employe non autorise." && err.message !== "Lien expire.") {
-            console.error("Erreur Token:", err);
-            // احتیاطاً إذا حدث خطأ في الاتصال، نظهر الرسالة الخاصة بعدم الوجود لتأمين النظام
+        if (err.message !== "Employe non autorise.") {
+            console.error("Erreur:", err);
             afficherNonExistent();
         }
     });
