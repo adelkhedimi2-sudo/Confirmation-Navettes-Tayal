@@ -24,7 +24,7 @@
 
 <div class="container" id="main-container">
     <h1>TAYAL Transport</h1>
-    <p>Vérification de sécurité en cours...</p>
+    <p>Verification de securite en cours...</p>
     <div class="spinner" id="loading-spinner"></div>
 </div>
 
@@ -37,7 +37,7 @@
     const finStr = urlParams.get('fin');
     const finAnnulStr = urlParams.get('finAnnul'); 
     const destStr = urlParams.get('dest');         
-    const tokenURL = urlParams.get('token'); // 🌟 إضافة استخراج المفتاح السري 🌟
+    const tokenURL = urlParams.get('token'); 
 
     const container = document.getElementById('main-container');
     let realTimeGlobal = null;
@@ -45,21 +45,24 @@
 
     if (!email || !choix) {
         container.style.borderTop = "5px solid #F44336";
-        container.innerHTML = `<div class="error-icon">⚠️</div><h1 style="color: #F44336;">Erreur de Lien</h1><p>Le lien utilisé est invalide.</p>`;
-        throw new Error("Paramètres manquants.");
+        container.innerHTML = `<div class="error-icon">⚠️</div><h1 style="color: #F44336;">Erreur de Lien</h1><p>Le lien utilise est invalide.</p>`;
+        throw new Error("Parametres manquants.");
     }
 
-    // الخطوة الأولى: جلب الوقت الحقيقي
-    fetch('https://worldtimeapi.org/api/timezone/Africa/Algiers')
-        .then(res => { if (!res.ok) throw new Error(); return res.json(); })
+    // جلب الوقت مع مهلة أمان لتفادي التعليق
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+    fetch('https://worldtimeapi.org/api/timezone/Africa/Algiers', { signal: controller.signal })
+        .then(res => { clearTimeout(timeoutId); if (!res.ok) throw new Error(); return res.json(); })
         .then(data => { realTimeGlobal = new Date(data.datetime); verifierTokenAvantTout(realTimeGlobal); })
         .catch(() => {
             fetch(window.location.href, { method: 'HEAD' })
                 .then(res => { realTimeGlobal = new Date(res.headers.get('Date')); verifierTokenAvantTout(realTimeGlobal); })
-                .catch(() => { container.innerHTML = `<div class="error-icon">📶</div><h1 style="color: #FF9800;">Erreur Réseau</h1>`; });
+                .catch(() => { realTimeGlobal = new Date(); verifierTokenAvantTout(realTimeGlobal); });
         });
 
-    // 🛑 نقطة التفتيش الأولى: التحقق من أمان الرابط (Token)
+    // التحقق من أمان الرابط (Token)
     function verifierTokenAvantTout(tempsReel) {
         const baseUrlToken = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/tokens_navette';
         const queryUrl = new URL(baseUrlToken);
@@ -76,73 +79,38 @@
             cache: 'no-store'
         })
         .then(res => {
-            if (!res.ok) throw new Error("Erreur vérification token");
+            if (!res.ok) throw new Error("Erreur verification token");
             return res.json();
         })
         .then(data => {
-            // إذا كان هناك مفتاح مسجل في القاعدة
             if (data && data.length > 0) {
                 const dbToken = data[0].token;
-                // إذا كان المفتاح في القاعدة لا يطابق المفتاح في الرابط (يعني إيميل قديم)
                 if (dbToken && dbToken !== tokenURL) {
                     afficherLienExpire();
-                    return; // 🛑 إيقاف كل شيء هنا!
+                    return; 
                 }
             }
-            // إذا كان المفتاح متطابقاً، نمر إلى نقطة التفتيش الثانية
-            verifierTemps(tempsReel);
+            verifierStatutEmploye(tempsReel);
         })
         .catch(err => {
             console.error("Erreur Token:", err);
-            // في حال فشل الاتصال بجدول التوكن، نكمل العملية حتى لا يتوقف النظام بأكمله
-            verifierTemps(tempsReel); 
+            verifierStatutEmploye(tempsReel); 
         });
     }
 
-    // دالة إظهار رسالة الرابط المنتهي
     function afficherLienExpire() {
         container.style.borderTop = "5px solid #F44336";
         container.innerHTML = `
             <div class="error-icon">❌</div>
-            <h1 style="color: #F44336;">Lien Expiré</h1>
-            <p>Ce lien n'est plus valide car vous avez reçu un <b>nouvel email</b> plus récent.</p>
+            <h1 style="color: #F44336;">Lien Expire</h1>
+            <p>Ce lien n'est plus valide car vous avez recu un <b>nouvel email</b> plus recent.</p>
             <div style="background-color: #fff3e0; padding: 15px; border-radius: 8px; border-left: 5px solid #FF9800; display: inline-block; margin-top: 10px;">
-                <b style="color: #d84315;">Veuillez utiliser le lien contenu dans le dernier email reçu.</b>
+                <b style="color: #d84315;">Veuillez utiliser le lien contenu dans le dernier email recu.</b>
             </div>
         `;
     }
 
-    // ⏱️ نقطة التفتيش الثانية: التحقق من الوقت
-    function verifierTemps(realNow) {
-        if (debutStr && finStr && finAnnulStr) {
-            const startDate = new Date(debutStr + "+01:00");
-            const endDateConf = new Date(finStr + "+01:00");       
-            const endDateAnnul = new Date(finAnnulStr + "+01:00"); 
-
-            if (realNow < startDate) {
-                afficherErreurTemps("Les inscriptions ne sont pas encore ouvertes."); return;
-            }
-
-            if (choix === "Pas_De_Navette") {
-                if (realNow > endDateAnnul) {
-                    afficherErreurTemps("Le délai d'annulation est expiré."); return;
-                }
-            } else {
-                if (realNow > endDateConf) {
-                    afficherErreurTemps("Le délai de confirmation est expiré."); return;
-                }
-            }
-        }
-        // 👤 نقطة التفتيش الثالثة: التحقق من حالة العامل
-        verifierStatutEmploye(realNow);
-    }
-
-    function afficherErreurTemps(message) {
-        container.style.borderTop = "5px solid #F44336";
-        container.innerHTML = `<div class="error-icon">⏳</div><h1 style="color: #F44336;">Délai Expiré</h1><p>${message}</p>`;
-    }
-
-    // 👤 نقطة التفتيش الثالثة: التحقق من حالة العامل في جدول الإجابات
+    // التحقق من حالة العامل في جدول الإجابات
     function verifierStatutEmploye(tempsReel) {
         const baseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses';
         
@@ -166,7 +134,7 @@
         .then(data => {
             if (data && data.length > 0) {
                 const ancienChoix = data[0].choix || "";
-                const hasModif = ancienChoix.includes("[MODIFIÉ]");
+                const hasModif = ancienChoix.includes("[MODIFIE]");
 
                 if (choix === "Pas_De_Navette") {
                     if (ancienChoix.startsWith("Annulation")) {
@@ -177,21 +145,21 @@
                     let textToSave = "Annulation";
                     let actionBtn = determinerAction("Pas_De_Navette");
                     if (hasModif) {
-                        textToSave += " [MODIFIÉ]";
-                        actionBtn += " (Modifié)";
+                        textToSave += " [MODIFIE]";
+                        actionBtn += " (Modifie)";
                     }
                     
                     container.innerHTML = `<p>Annulation en cours...</p><div class="spinner"></div>`;
-                    let destFinale = destStr ? destStr.trim() : "Non Spécifiée";
+                    let destFinale = destStr ? destStr.trim() : "Non Specifiee";
                     executerEnregistrement(tempsReel, textToSave, actionBtn, destFinale, 'PATCH');
                     return;
                 }
 
-                let destFinale = destStr ? destStr.trim() : "Non Spécifiée";
+                let destFinale = destStr ? destStr.trim() : "Non Specifiee";
                 let nouveauChoixTexte = determinerTexteChoix(choix, destFinale);
 
                 if (hasModif) {
-                    if (ancienChoix === (nouveauChoixTexte + " [MODIFIÉ]") && choix !== "Changer") {
+                    if (ancienChoix === (nouveauChoixTexte + " [MODIFIE]") && choix !== "Changer") {
                         afficherDejaEnregistre(nouveauChoixTexte);
                     } else {
                         afficherErreurModif();
@@ -211,16 +179,16 @@
             }
         })
         .catch(err => {
-            container.innerHTML = `<div class="error-icon">📶</div><h1 style="color: #FF9800;">Erreur Réseau</h1><p>Impossible de vérifier l'historique.</p><p style="font-size: 13px; color: #888;">(Détail: ${err.message})</p>`;
+            container.innerHTML = `<div class="error-icon">📶</div><h1 style="color: #FF9800;">Erreur Reseau</h1><p>Impossible de verifier l'historique.</p>`;
         });
     }
 
     function afficherDejaEnregistre(texte) {
-        let cleanText = texte.replace(" [MODIFIÉ]", "");
+        let cleanText = texte.replace(" [MODIFIE]", "");
         container.style.borderTop = "5px solid #FF9800";
         container.innerHTML = `
             <div class="error-icon" style="color:#FF9800;">⚠️</div>
-            <h1 style="color: #FF9800;">Déjà Enregistré !</h1>
+            <h1 style="color: #FF9800;">Deja Enregistre !</h1>
             <p style="font-size: 18px; font-weight: bold; color: #FF9800; margin-bottom: 5px;">لقد قمت بالفعل باختيار :</p>
             <div style="background-color: #fff3e0; padding: 15px; border-radius: 8px; border-left: 5px solid #FF9800; display: inline-block; margin-top: 10px;">
                 <b style="color: #FF9800; font-size: 18px;">${cleanText}</b>
@@ -232,14 +200,13 @@
         container.style.borderTop = "5px solid #F44336";
         container.innerHTML = `
             <div class="error-icon">❌</div>
-            <h1 style="color: #F44336;">Modification Refusée</h1>
-            <p>Vous avez déjà utilisé votre droit de modification <b>unique</b>.</p>
-            <p>Votre choix précédent est définitif et ne peut plus être changé.</p>
+            <h1 style="color: #F44336;">Modification Refusee</h1>
+            <p>Vous avez deja utilise votre droit de modification <b>unique</b>.</p>
         `;
     }
 
     function afficherAvertissementModification(tempsReel, ancienChoix, nouveauChoixTexte) {
-        let cleanAncien = ancienChoix.replace(" [MODIFIÉ]", "");
+        let cleanAncien = ancienChoix.replace(" [MODIFIE]", "");
         container.style.borderTop = "5px solid #FF9800";
         
         let destinationForm = "";
@@ -251,32 +218,26 @@
                     <input type="text" id="inputNewDest" placeholder="Ex: Oran, Chlef, Alger..." required>
                 </div>
                 <div class="form-group">
-                    <label>Trajet souhaité :</label>
+                    <label>Trajet souhaite :</label>
                     <select id="selectTrajet">
-                        <option value="Depart">Départ uniquement</option>
+                        <option value="Depart">Depart uniquement</option>
                         <option value="Retour">Retour uniquement</option>
-                        <option value="Depart_Retour" selected>Départ et Retour</option>
+                        <option value="Depart_Retour" selected>Depart et Retour</option>
                     </select>
                 </div>
-                <div style="background-color: #fff3e0; padding: 10px; border-left: 4px solid #FF9800; margin: 15px 0; text-align: left; font-size:14px;">
-                    <b style="color: #d84315;">Note Importante :</b> Ceci sera votre <u>dernière modification autorisée</u>.
-                </div>
-                <button class="btn-submit" style="background-color: #FF9800;" onclick="soumettreChangementModif()">Confirmer la modification définitive</button>
+                <button class="btn-submit" style="background-color: #FF9800;" onclick="soumettreChangementModif()">Confirmer la modification</button>
             `;
         } else {
             destinationForm = `
                 <p>Voulez-vous vraiment changer vers : <br><b style="color:#003366;">${nouveauChoixTexte}</b> ?</p>
-                <div style="background-color: #fff3e0; padding: 10px; border-left: 4px solid #FF9800; margin: 15px 0; text-align: left; font-size:14px;">
-                    <b style="color: #d84315;">Note Importante :</b> Ceci sera votre <u>dernière modification autorisée</u>. Vous ne pourrez plus changer de navette après (sauf pour annuler).
-                </div>
-                <button class="btn-submit" style="background-color: #FF9800;" onclick="confirmerModifDefinitive()">Confirmer la modification définitive</button>
+                <button class="btn-submit" style="background-color: #FF9800;" onclick="confirmerModifDefinitive()">Confirmer la modification</button>
             `;
         }
 
         container.innerHTML = `
             <div class="error-icon" style="color:#FF9800;">⚠️</div>
             <h1 style="color: #FF9800;">Attention</h1>
-            <p>Vous avez déjà enregistré : <br><b>${cleanAncien}</b></p>
+            <p>Vous avez deja enregistre : <br><b>${cleanAncien}</b></p>
             ${destinationForm}
         `;
 
@@ -290,8 +251,8 @@
             const nouveauTrajet = document.getElementById('selectTrajet').value;
             if (nouvelleDest === "") { alert("Veuillez saisir votre nouvelle destination."); return; }
             container.innerHTML = `<p>Enregistrement en cours...</p><div class="spinner"></div>`;
-            let finalTxt = determinerTexteChoix(nouveauTrajet, nouvelleDest) + " [MODIFIÉ]";
-            let finalAction = determinerAction(nouveauTrajet) + " (Modifié)";
+            let finalTxt = determinerTexteChoix(nouveauTrajet, nouvelleDest) + " [MODIFIE]";
+            let finalAction = determinerAction(nouveauTrajet) + " (Modifie)";
             executerEnregistrement(tempsReel, finalTxt, finalAction, nouvelleDest, 'PATCH');
         }
     }
@@ -301,18 +262,18 @@
             container.style.borderTop = "5px solid #003366";
             container.innerHTML = `
                 <h1>Modifier la destination</h1>
-                <p>Votre destination actuelle : <b style="color:#2196F3;">${destStr || "Non Spécifiée"}</b></p>
+                <p>Votre destination actuelle : <b style="color:#2196F3;">${destStr || "Non Specifiee"}</b></p>
                 <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
                 <div class="form-group">
                     <label>Nouvelle Destination :</label>
                     <input type="text" id="inputNewDest" placeholder="Ex: Oran, Chlef, Alger..." required>
                 </div>
                 <div class="form-group">
-                    <label>Trajet souhaité :</label>
+                    <label>Trajet souhaite :</label>
                     <select id="selectTrajet">
-                        <option value="Depart">Départ uniquement</option>
+                        <option value="Depart">Depart uniquement</option>
                         <option value="Retour">Retour uniquement</option>
-                        <option value="Depart_Retour" selected>Départ et Retour</option>
+                        <option value="Depart_Retour" selected>Depart et Retour</option>
                     </select>
                 </div>
                 <button class="btn-submit" onclick="soumettreNouveauChangement()">Enregistrer</button>
@@ -327,19 +288,19 @@
                 let finalTxt = determinerTexteChoix(nouveauTrajet, nouvelleDest);
                 let finalAction = determinerAction(nouveauTrajet);
                 let reqMethod = isModification ? 'PATCH' : 'POST';
-                if (isModification) { finalTxt += " [MODIFIÉ]"; finalAction += " (Modifié)"; }
+                if (isModification) { finalTxt += " [MODIFIE]"; finalAction += " (Modifie)"; }
                 
                 executerEnregistrement(tempsReel, finalTxt, finalAction, nouvelleDest, reqMethod);
             }
         } else {
-            let destFinale = destStr ? destStr.trim() : "Non Spécifiée";
+            let destFinale = destStr ? destStr.trim() : "Non Specifiee";
             let choixFinalText = determinerTexteChoix(choix, destFinale);
             let actionBtn = determinerAction(choix);
             let reqMethod = isModification ? 'PATCH' : 'POST';
 
             if (isModification) {
-                choixFinalText += " [MODIFIÉ]";
-                actionBtn += " (Modifié)";
+                choixFinalText += " [MODIFIE]";
+                actionBtn += " (Modifie)";
             }
 
             executerEnregistrement(tempsReel, choixFinalText, actionBtn, destFinale, reqMethod);
@@ -349,21 +310,21 @@
     function determinerTexteChoix(typeChoix, destination) {
         if (typeChoix === "Pas_De_Navette") return "Annulation";
         let prefix = "";
-        if (typeChoix === "Depart") prefix = "Départ";
+        if (typeChoix === "Depart") prefix = "Depart";
         else if (typeChoix === "Retour") prefix = "Retour";
-        else if (typeChoix === "Depart_Retour") prefix = "Départ / Retour";
+        else if (typeChoix === "Depart_Retour") prefix = "Depart / Retour";
         return `${prefix} (Vers: ${destination})`;
     }
 
     function determinerAction(typeChoix) {
         if (typeChoix === "Pas_De_Navette") return "❌ Annulation de la navette";
-        if (typeChoix === "Depart") return "➡️ Départ uniquement";
+        if (typeChoix === "Depart") return "➡️ Depart uniquement";
         if (typeChoix === "Retour") return "⬅️ Retour uniquement";
-        if (typeChoix === "Depart_Retour") return "🔄 Départ et Retour";
+        if (typeChoix === "Depart_Retour") return "🔄 Depart et Retour";
         return typeChoix;
     }
 
-    // ✅ نقطة النهاية: التسجيل في قاعدة البيانات
+    // التسجيل في قاعدة البيانات
     function executerEnregistrement(tempsReel, choixFinalEnregistre, actionBtn, destFinale, reqMethod) {
         const baseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses';
 
@@ -387,9 +348,9 @@
                 container.style.borderTop = "5px solid #4CAF50";
                 container.innerHTML = `
                     <div class="success-icon">✔️</div>
-                    <h1 style="color: #4CAF50;">Opération Réussie</h1>
+                    <h1 style="color: #4CAF50;">Operation Reussie</h1>
                     <p>Merci <b>${email.split('@')[0].toUpperCase()}</b>.</p>
-                    <p>Votre choix a été enregistré avec succès.</p>
+                    <p>Votre choix a ete enregistre avec succes.</p>
                 `;
 
                 const heureAlgerie = tempsReel.toLocaleString('fr-FR', { timeZone: 'Africa/Algiers' });
@@ -400,13 +361,13 @@
                     method: "POST",
                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                     body: JSON.stringify({
-                        _subject: `📢 Navette : ${nomEmploye} a répondu !`,
+                        _subject: `📢 Navette : ${nomEmploye} a repondu !`,
                         _template: "table",
-                        "👤 Nom & Prénom": nomEmploye,
+                        "👤 Nom & Prenom": nomEmploye,
                         "📧 Email": email,
-                        "🔘 Choix effectué": actionBtn,
+                        "🔘 Choix effectue": actionBtn,
                         "📍 Destination": destFinale,
-                        "🕒 Heure (Algérie)": heureAlgerie
+                        "🕒 Heure (Algerie)": heureAlgerie
                     })
                 }).catch(() => console.log("FormSubmit Error"));
             } else {
@@ -421,7 +382,7 @@
                 <div class="error-icon">❌</div>
                 <h1 style="color: #F44336;">Erreur</h1>
                 <p>Impossible d'enregistrer.</p>
-                <p style="color: #F44336; font-size: 13px; margin-top: 15px;">(Détail technique: ${error.message})</p>
+                <p style="color: #F44336; font-size: 13px; margin-top: 15px;">(Detail technique: ${error.message})</p>
             `;
         });
     }
