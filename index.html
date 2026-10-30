@@ -34,7 +34,7 @@
     const email = emailRaw ? emailRaw.trim() : null;
     const choix = urlParams.get('choix');
     const destStr = urlParams.get('dest');         
-    const tokenURL = urlParams.get('token'); 
+    const tokenURL = urlParams.get('token');  
 
     const container = document.getElementById('main-container');
     let realTimeGlobal = null;
@@ -46,53 +46,68 @@
         throw new Error("Parametres manquants.");
     }
 
-    // جلب الوقت الحقيقي مع مهلة لتفادي التجمّد
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    // الخطوة 0: التحقق أولاً من أن العامل موجود في قائمة المصرح لهم (Tokens Supabase)
+    const baseUrlToken = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/tokens_navette';
+    const queryUrlToken = new URL(baseUrlToken);
+    queryUrlToken.searchParams.append('email', `eq.${email}`);
+    queryUrlToken.searchParams.append('select', 'token');
 
-    fetch('https://worldtimeapi.org/api/timezone/Africa/Algiers', { signal: controller.signal })
-        .then(res => { clearTimeout(timeoutId); if (!res.ok) throw new Error(); return res.json(); })
-        .then(data => { realTimeGlobal = new Date(data.datetime); verifierTokenAvantTout(realTimeGlobal); })
-        .catch(() => {
-            fetch(window.location.href, { method: 'HEAD' })
-                .then(res => { realTimeGlobal = new Date(res.headers.get('Date')); verifierTokenAvantTout(realTimeGlobal); })
-                .catch(() => { realTimeGlobal = new Date(); verifierTokenAvantTout(realTimeGlobal); });
-        });
+    fetch(queryUrlToken.toString(), {
+        method: 'GET',
+        headers: { 
+            'apikey': supabaseKey, 
+            'Authorization': 'Bearer ' + supabaseKey,
+            'Accept': 'application/json'
+        },
+        cache: 'no-store'
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("Erreur verification token");
+        return res.json();
+    })
+    .then(data => {
+        if (!data || data.length === 0) {
+            // إذا لم يتم العثور على الإيميل في قاعدة البيانات المعتمدة
+            container.style.borderTop = "5px solid #F44336";
+            container.innerHTML = `
+                <div class="error-icon">❌</div>
+                <h1 style="color: #F44336;">Accès Refusé</h1>
+                <p style="color: #c53030; font-weight: bold; font-size: 16px; line-height: 1.5;">
+                    أنت غير موجود في قائمة العمال، يرجى الاتصال بمسؤول النقل ليتم إضافتك.
+                </p>
+            `;
+            throw new Error("Employe non autorise.");
+        }
 
-    // 1. التحقق من أمان الرابط (Token)
-    function verifierTokenAvantTout(tempsReel) {
-        const baseUrlToken = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/tokens_navette';
-        const queryUrl = new URL(baseUrlToken);
-        queryUrl.searchParams.append('email', `eq.${email}`);
-        queryUrl.searchParams.append('select', 'token');
+        const dbToken = data[0].token;
+        if (dbToken && dbToken !== tokenURL) {
+            afficherLienExpire();
+            throw new Error("Lien expire.");
+        }
 
-        fetch(queryUrl.toString(), {
-            method: 'GET',
-            headers: { 
-                'apikey': supabaseKey, 
-                'Authorization': 'Bearer ' + supabaseKey,
-                'Accept': 'application/json'
-            },
-            cache: 'no-store'
-        })
-        .then(res => {
-            if (!res.ok) throw new Error("Erreur verification token");
-            return res.json();
-        })
-        .then(data => {
-            if (data && data.length > 0) {
-                const dbToken = data[0].token;
-                if (dbToken && dbToken !== tokenURL) {
-                    afficherLienExpire();
-                    return; 
-                }
-            }
-            verifierStatutEmploye(tempsReel);
-        })
-        .catch(err => {
+        // إذا اجتاز التحقق، نبدأ بجلب الوقت والتحقق من الحجز
+        lancerVerificationTempsEtStatut();
+    })
+    .catch(err => {
+        if (err.message !== "Employe non autorise." && err.message !== "Lien expire.") {
             console.error("Erreur Token:", err);
-            verifierStatutEmploye(tempsReel); 
-        });
+            lancerVerificationTempsEtStatut();
+        }
+    });
+
+    function lancerVerificationTempsEtStatut() {
+        // جلب الوقت الحقيقي مع مهلة لتفادي التجمّد
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+        fetch('https://worldtimeapi.org/api/timezone/Africa/Algiers', { signal: controller.signal })
+            .then(res => { clearTimeout(timeoutId); if (!res.ok) throw new Error(); return res.json(); })
+            .then(data => { realTimeGlobal = new Date(data.datetime); verifierStatutEmploye(realTimeGlobal); })
+            .catch(() => {
+                fetch(window.location.href, { method: 'HEAD' })
+                    .then(res => { realTimeGlobal = new Date(res.headers.get('Date')); verifierStatutEmploye(realTimeGlobal); })
+                    .catch(() => { realTimeGlobal = new Date(); verifierStatutEmploye(realTimeGlobal); });
+            });
     }
 
     function afficherLienExpire() {
