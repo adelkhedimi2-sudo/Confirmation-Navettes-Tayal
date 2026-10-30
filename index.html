@@ -46,7 +46,19 @@
         throw new Error("Parametres manquants.");
     }
 
-    // الخطوة 0: التحقق أولاً من أن العامل موجود في قائمة المصرح لهم (Tokens Supabase)
+    // دالة لعرض رسالة "أنت غير موجود في القائمة" بشكل احترافي
+    function afficherNonExistent() {
+        container.style.borderTop = "5px solid #F44336";
+        container.innerHTML = `
+            <div class="error-icon">❌</div>
+            <h1 style="color: #F44336;">Accès Refusé</h1>
+            <p style="color: #c53030; font-weight: bold; font-size: 16px; line-height: 1.6; margin-top: 20px;">
+                أنت غير موجود في قائمة العمال، يرجى الاتصال بمسؤول النقل ليتم إضافتك.
+            </p>
+        `;
+    }
+
+    // الخطوة 1: التحقق مما إذا كان الإيميل والتوكن مسجلين في جدول tokens_navette (يعني أنه ما زال في القائمة وتم إرسال إيميل حديث له)
     const baseUrlToken = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/tokens_navette';
     const queryUrlToken = new URL(baseUrlToken);
     queryUrlToken.searchParams.append('email', `eq.${email}`);
@@ -66,16 +78,9 @@
         return res.json();
     })
     .then(data => {
+        // إذا لم يتم العثور على الإيميل في قاعدة البيانات (لأنه تم حذفه من Liste ولم يعد له توكن نشط)
         if (!data || data.length === 0) {
-            // إذا لم يتم العثور على الإيميل في قاعدة البيانات المعتمدة
-            container.style.borderTop = "5px solid #F44336";
-            container.innerHTML = `
-                <div class="error-icon">❌</div>
-                <h1 style="color: #F44336;">Accès Refusé</h1>
-                <p style="color: #c53030; font-weight: bold; font-size: 16px; line-height: 1.5;">
-                    أنت غير موجود في قائمة العمال، يرجى الاتصال بمسؤول النقل ليتم إضافتك.
-                </p>
-            `;
+            afficherNonExistent();
             throw new Error("Employe non autorise.");
         }
 
@@ -85,18 +90,18 @@
             throw new Error("Lien expire.");
         }
 
-        // إذا اجتاز التحقق، نبدأ بجلب الوقت والتحقق من الحجز
+        // إذا كان موجوداً وصحيحاً، نتابع العمل بشكل طبيعي
         lancerVerificationTempsEtStatut();
     })
     .catch(err => {
         if (err.message !== "Employe non autorise." && err.message !== "Lien expire.") {
             console.error("Erreur Token:", err);
-            lancerVerificationTempsEtStatut();
+            // احتیاطاً إذا حدث خطأ في الاتصال، نظهر الرسالة الخاصة بعدم الوجود لتأمين النظام
+            afficherNonExistent();
         }
     });
 
     function lancerVerificationTempsEtStatut() {
-        // جلب الوقت الحقيقي مع مهلة لتفادي التجمّد
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3000);
 
@@ -122,10 +127,8 @@
         `;
     }
 
-    // 2. التحقق من سجل العامل في قاعدة البيانات (بدون قيود وقت)
     function verifierStatutEmploye(tempsReel) {
         const baseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses';
-        
         const queryUrl = new URL(baseUrl);
         queryUrl.searchParams.append('email_employe', `eq.${email}`);
         queryUrl.searchParams.append('select', 'choix');
@@ -336,7 +339,6 @@
         return typeChoix;
     }
 
-    // التسجيل في قاعدة البيانات
     function executerEnregistrement(tempsReel, choixFinalEnregistre, actionBtn, destFinale, reqMethod) {
         const baseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses';
 
