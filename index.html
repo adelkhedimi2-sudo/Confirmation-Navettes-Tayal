@@ -33,9 +33,6 @@
     const emailRaw = urlParams.get('email');
     const email = emailRaw ? emailRaw.trim() : null;
     const choix = urlParams.get('choix');
-    const debutStr = urlParams.get('debut');
-    const finStr = urlParams.get('fin');
-    const finAnnulStr = urlParams.get('finAnnul'); 
     const destStr = urlParams.get('dest');         
     const tokenURL = urlParams.get('token'); 
 
@@ -49,7 +46,7 @@
         throw new Error("Parametres manquants.");
     }
 
-    // جلب الوقت مع مهلة أمان لتفادي التعليق
+    // جلب الوقت الحقيقي مع مهلة لتفادي التجمّد
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3000);
 
@@ -62,7 +59,7 @@
                 .catch(() => { realTimeGlobal = new Date(); verifierTokenAvantTout(realTimeGlobal); });
         });
 
-    // التحقق من أمان الرابط (Token)
+    // 1. التحقق من أمان الرابط (Token)
     function verifierTokenAvantTout(tempsReel) {
         const baseUrlToken = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/tokens_navette';
         const queryUrl = new URL(baseUrlToken);
@@ -110,7 +107,7 @@
         `;
     }
 
-    // التحقق من حالة العامل في جدول الإجابات
+    // 2. التحقق من سجل العامل في قاعدة البيانات (بدون قيود وقت)
     function verifierStatutEmploye(tempsReel) {
         const baseUrl = 'https://dsmflhnjmnllvhkuepit.supabase.co/rest/v1/navette_reponses';
         
