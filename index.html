@@ -46,14 +46,14 @@
         throw new Error("Parametres manquants.");
     }
 
-    // دالة لعرض رسالة "أنت غير موجود في القائمة" مع معلومات الاتصال بك بشكل جميل واحترافي
+    // دالة عرض رسالة الخطأ الجديدة مع معلومات الاتصال بك
     function afficherNonExistent() {
         container.style.borderTop = "5px solid #F44336";
         container.innerHTML = `
             <div class="error-icon">❌</div>
             <h1 style="color: #F44336;">Accès Refusé</h1>
             <p style="color: #c53030; font-weight: bold; font-size: 16px; line-height: 1.6; margin-top: 15px;">
-                أنت غير موجود في قائمة العمال، يرجى الاتصال بمسؤول النقل ليتم إضافتك.
+                أنت غير موجود في قائمة العمال او قد انتهت صلاحية هذا الرابط حتى الاسبوع المقبل ،لاي استفسار يرجى الاتصال بمسؤول النقل
             </p>
             <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 15px; margin-top: 20px; text-align: center;">
                 <div style="font-size: 12px; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 5px;">responsable transport</div>
@@ -112,15 +112,7 @@
     }
 
     function afficherLienExpire() {
-        container.style.borderTop = "5px solid #F44336";
-        container.innerHTML = `
-            <div class="error-icon">❌</div>
-            <h1 style="color: #F44336;">Lien Expire</h1>
-            <p>Ce lien n'est plus valide car vous avez recu un <b>nouvel email</b> plus recent.</p>
-            <div style="background-color: #fff3e0; padding: 15px; border-radius: 8px; border-left: 5px solid #FF9800; display: inline-block; margin-top: 10px;">
-                <b style="color: #d84315;">Veuillez utiliser le lien contenu dans le dernier email recu.</b>
-            </div>
-        `;
+        afficherNonExistent();
     }
 
     function verifierStatutEmploye(tempsReel) {
