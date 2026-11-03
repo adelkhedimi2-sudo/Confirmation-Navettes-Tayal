@@ -6,106 +6,148 @@
     <title>Statut de la Navette - En Direct</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; }
-        .container { max-width: 600px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
-        h1 { color: #003366; text-align: center; font-size: 22px; border-bottom: 2px solid #FF9800; padding-bottom: 10px; margin-top: 0; }
+        .container { max-width: 600px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
         
         /* =========================================
-           تصميم العداد الاحترافي والجذاب جداً
+           1. تصميم العنوان الفخم (Header Card)
            ========================================= */
-        .counter-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
+        .header-card {
+            background: linear-gradient(to right, #ffffff, #f8fafc);
+            border-left: 6px solid #FF9800;
+            padding: 20px 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
             margin-bottom: 25px;
-            margin-top: 15px;
-        }
-        .counter-box {
-            background: linear-gradient(135deg, #003366 0%, #1565C0 100%);
-            color: #ffffff;
-            padding: 15px 30px;
-            border-radius: 50px;
-            box-shadow: 0 8px 20px rgba(21, 101, 192, 0.25);
             display: flex;
             align-items: center;
-            gap: 20px;
-            border: 2px solid #64B5F6;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            gap: 15px;
+            border: 1px solid #e2e8f0;
         }
-        .counter-box:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 25px rgba(21, 101, 192, 0.4);
-        }
-        .counter-icon {
-            background: rgba(255, 255, 255, 0.15);
-            width: 45px;
-            height: 45px;
+        .header-icon {
+            font-size: 28px;
+            background: #fff7ed;
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 5px rgba(255, 152, 0, 0.2);
         }
-        .counter-details {
-            text-align: left;
+        .header-title-text {
+            color: #003366;
+            margin: 0;
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
         }
-        .counter-text {
+
+        /* =========================================
+           2. تصميم العداد الاحترافي (Dashboard Widget)
+           ========================================= */
+        .counter-widget {
+            background: #003366;
+            background-image: radial-gradient(circle at top right, #1565C0, #003366);
+            border-radius: 16px;
+            padding: 25px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 12px 24px rgba(0, 51, 102, 0.25);
+            margin-bottom: 25px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #1e40af;
+        }
+        /* تأثير العلامة المائية في خلفية العداد */
+        .counter-widget::after {
+            content: '🚌';
+            position: absolute;
+            right: -15px;
+            top: -25px;
+            font-size: 140px;
+            opacity: 0.04;
+            transform: rotate(-15deg);
+            pointer-events: none;
+        }
+        .counter-info {
+            z-index: 1;
+        }
+        .counter-label {
+            color: #93C5FD;
             font-size: 13px;
-            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #E3F2FD;
-            margin-bottom: 2px;
+            letter-spacing: 1.5px;
+            font-weight: 700;
+            margin-bottom: 8px;
         }
-        .counter-number {
-            font-size: 32px;
+        .counter-value {
+            font-size: 46px;
             font-weight: 900;
-            color: #FFB300; /* لون ذهبي بارز للرقم */
-            text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+            color: #FFB300; /* اللون الذهبي الفخم */
+            text-shadow: 0 4px 10px rgba(0,0,0,0.3);
             line-height: 1;
+        }
+        .counter-icon-large {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(8px);
+            width: 65px;
+            height: 65px;
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            z-index: 1;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
         }
         /* ========================================= */
 
         .list-group { list-style: none; padding: 0; margin: 0; }
-        .list-item { padding: 15px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; transition: background-color 0.3s; }
+        .list-item { padding: 16px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; transition: background-color 0.3s; }
+        .list-item:hover { background-color: #f8fafc; }
         .list-item:last-child { border-bottom: none; }
-        .emp-name { font-weight: 600; color: #334155; font-size: 16px; }
+        .emp-name { font-weight: 700; color: #1e293b; font-size: 16px; }
         
         /* تنسيق الألوان والحالات */
-        .status-ok { color: #16a34a; font-weight: bold; background: #dcfce7; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
-        .status-retour { color: #9333ea; font-weight: bold; background: #f3e5f5; padding: 6px 12px; border-radius: 20px; font-size: 14px; border: 1px solid #c084fc; }
-        .status-wait { color: #ea580c; font-weight: bold; background: #ffedd5; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
-        .status-cancel { color: #dc2626; font-weight: bold; background: #fee2e2; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
+        .status-ok { color: #16a34a; font-weight: bold; background: #dcfce7; padding: 6px 12px; border-radius: 20px; font-size: 13px; border: 1px solid #bbf7d0; }
+        .status-retour { color: #9333ea; font-weight: bold; background: #f3e5f5; padding: 6px 12px; border-radius: 20px; font-size: 13px; border: 1px solid #e9d5ff; }
+        .status-wait { color: #ea580c; font-weight: bold; background: #ffedd5; padding: 6px 12px; border-radius: 20px; font-size: 13px; border: 1px solid #fed7aa; }
+        .status-cancel { color: #dc2626; font-weight: bold; background: #fee2e2; padding: 6px 12px; border-radius: 20px; font-size: 13px; border: 1px solid #fecaca; }
         
         .loading { text-align: center; color: #64748b; font-style: italic; margin: 20px 0; }
         
-        .live-indicator { display: inline-block; width: 10px; height: 10px; background-color: #ef4444; border-radius: 50%; animation: pulse 1.5s infinite; margin-right: 8px; vertical-align: middle; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
-        .live-text { text-align: center; font-size: 12px; color: #64748b; margin-bottom: 20px; font-weight: bold; }
+        .live-indicator { display: inline-block; width: 10px; height: 10px; background-color: #10b981; border-radius: 50%; animation: pulse 1.5s infinite; margin-right: 8px; vertical-align: middle; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+        .live-text { text-align: center; font-size: 13px; color: #64748b; margin-bottom: 20px; font-weight: bold; }
     </style>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div class="container">
-        <h1 id="busTitle">⏳ Chargement de la navette...</h1>
         
-        <!-- العداد الاحترافي الجديد -->
-        <div class="counter-container">
-            <div class="counter-box">
-                <div class="counter-icon">🚌</div>
-                <div class="counter-details">
-                    <div class="counter-text">Confirmations (Départ)</div>
-                    <div class="counter-number" id="passengerCounter">0</div>
-                </div>
+        <!-- العنوان الفخم -->
+        <div class="header-card">
+            <div class="header-icon">🚌</div>
+            <h1 class="header-title-text" id="busTitle">Chargement...</h1>
+        </div>
+        
+        <!-- العداد الاحترافي -->
+        <div class="counter-widget">
+            <div class="counter-info">
+                <div class="counter-label">Confirmations (Départ)</div>
+                <div class="counter-value" id="passengerCounter">0</div>
             </div>
+            <div class="counter-icon-large">👥</div>
         </div>
 
         <div class="live-text">
-            <span class="live-indicator"></span> Mises à jour automatiques activées
+            <span class="live-indicator"></span> Synchronisation en direct activée
         </div>
         
-        <div id="loading" class="loading">Chargement des données...</div>
+        <div id="loading" class="loading">Chargement des données en cours...</div>
         <ul class="list-group" id="passengersList"></ul>
     </div>
 
@@ -120,12 +162,12 @@
             const busName = params.get('bus');
             
             if(!busName) {
-                document.getElementById('busTitle').innerText = "❌ Erreur: Aucune navette spécifiée";
+                document.getElementById('busTitle').innerText = "Erreur: Navette non spécifiée";
                 document.getElementById('loading').style.display = 'none';
                 return;
             }
             
-            document.getElementById('busTitle').innerText = "🚌 Navette : " + busName;
+            document.getElementById('busTitle').innerText = busName;
 
             try {
                 let res1 = await fetch(`${SUPABASE_URL}/rest/v1/tokens_navette?bus_employe=eq.${encodeURIComponent(busName)}`, {
@@ -154,7 +196,7 @@
                 ul.innerHTML = "";
 
                 if(tokens.length === 0) {
-                    ul.innerHTML = "<p style='text-align:center; color:#64748b;'>Aucun employé trouvé pour cette navette.</p>";
+                    ul.innerHTML = "<p style='text-align:center; color:#64748b; font-weight:500;'>Aucun employé trouvé pour cette navette.</p>";
                     document.getElementById('passengerCounter').innerText = "0";
                     return;
                 }
@@ -188,12 +230,11 @@
                     else if (choixLower.includes("retour") && !choixLower.includes("depart")) {
                         statusDiv.innerHTML = "↩️ Retour Uniquement";
                         statusDiv.className = "status-retour";
-                        // ❌ لا نزيد العداد هنا لأنها عودة فقط (الذهاب غير مؤكد)
                     }
                     else {
                         statusDiv.innerHTML = "✔️ Confirmé";
                         statusDiv.className = "status-ok";
-                        totalConfirmes++; // ✅ نحسب العداد فقط لمن أكد الذهاب
+                        totalConfirmes++;
                     }
 
                     li.appendChild(nameDiv);
@@ -201,12 +242,12 @@
                     ul.appendChild(li);
                 });
 
-                // تحديث رقم العداد فقط (الرقم الذهبي البارز)
+                // تحديث العداد الذهبي الفخم
                 document.getElementById('passengerCounter').innerText = totalConfirmes;
 
             } catch (error) {
                 console.error(error);
-                document.getElementById('busTitle').innerText = "⚠️ Erreur de connexion";
+                document.getElementById('busTitle').innerText = "Erreur de connexion";
             }
         }
         
