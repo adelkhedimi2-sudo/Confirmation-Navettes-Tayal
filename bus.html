@@ -76,7 +76,7 @@
         .bg-both { background-color: #f3e5f5; color: #7b1fa2; }
         .bg-none { background-color: #eceff1; color: #455a64; }
 
-        /* الزر الأحمر الحي والتفاعلي (En Ligne / Clignotant) لـ Retour */
+        /* الزر الأحمر الحي والتفاعلي (En Ligne) لمن يؤكد العودة فقط */
         .btn-live-rouge {
             background-color: #D32F2F;
             color: #ffffff;
@@ -114,7 +114,7 @@
         Nombre total de personnes dans le bus : 0
     </div>
 
-    <div id="loading" class="loading">Chargement des données en direct...</div>
+    <div id="loading" class="loading">Chargement des données...</div>
 
     <table id="resultsTable" style="display: none;">
         <thead>
@@ -131,13 +131,12 @@
 </div>
 
 <script>
-    // ⚠️ قم بوضع بيانات مشروعك الحقيقي هنا على Supabase (نفس البيانات التي تستخدمها في تطبيقك)
+    // ⚠️ ضع رابط ومفتاح Supabase الخاص بمشروعك هنا
     const SUPABASE_URL = 'ضع_رابط_قاعدة_بيانات_supabase_هنا'; 
     const SUPABASE_ANON_KEY = 'ضع_مفتاح_anon_key_هنا';
     
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // استخراج اسم الحافلة من الرابط
     const urlParams = new URLSearchParams(window.location.search);
     const busCode = urlParams.get('bus');
 
@@ -145,10 +144,14 @@
         document.getElementById('busName').innerText = "Navette / Bus : " + decodeURIComponent(busCode);
         chargerDonneesBus(decodeURIComponent(busCode));
         
-        // تحديث تلقائي كل 10 ثوانٍ لتبقى الصفحة En Ligne ومباشرة
-        setInterval(() => {
-            chargerDonneesBus(decodeURIComponent(busCode));
-        }, 10000);
+        // تفعيل التحديث الفوري الحقيقي (Realtime) لتبقى الصفحة خفيفة جداً وتتحدث تلقائياً عند أي تعديل
+        _supabase
+            .channel('public:confirmations_navettes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'confirmations_navettes' }, payload => {
+                chargerDonneesBus(decodeURIComponent(busCode));
+            })
+            .subscribe();
+
     } else {
         document.getElementById('busName').innerText = "Aucun bus spécifié.";
         document.getElementById('loading').style.display = 'none';
@@ -157,7 +160,7 @@
     async function chargerDonneesBus(bus) {
         try {
             const { data, error } = await _supabase
-                .from('confirmations_navettes') // اسم جدولك في Supabase
+                .from('confirmations_navettes')
                 .select('*')
                 .eq('bus', bus);
 
@@ -173,11 +176,10 @@
                     let choixHtml = '';
                     let estCompte = true;
 
-                    // تخصيص الحالة بناءً على اختيار الموظف
                     if (row.choix === 'Depart') {
                         choixHtml = `<span class="badge bg-depart">Départ Uniquement</span>`;
                     } else if (row.choix === 'Retour') {
-                        // الزر الأحمر الحي والتفاعلي لمن يؤكد العودة فقط
+                        // الزر الأحمر التفاعلي للعودة فقط
                         choixHtml = `<span class="btn-live-rouge">🔴 Retour Uniquement (أكد العودة فقط)</span>`;
                     } else if (row.choix === 'Depart_Retour' || row.choix === 'Depart & Retour') {
                         choixHtml = `<span class="badge bg-both">Départ & Retour</span>`;
