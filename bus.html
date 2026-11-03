@@ -8,15 +8,32 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; }
         .container { max-width: 600px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
         h1 { color: #003366; text-align: center; font-size: 22px; border-bottom: 2px solid #FF9800; padding-bottom: 10px; margin-top: 0; }
+        
+        /* تنسيق عداد الأشخاص الإجمالي */
+        .counter-box {
+            background-color: #e3f2fd;
+            border: 2px solid #1565c0;
+            color: #0d47a1;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
         .list-group { list-style: none; padding: 0; margin: 0; }
         .list-item { padding: 15px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; transition: background-color 0.3s; }
         .list-item:last-child { border-bottom: none; }
         .emp-name { font-weight: 600; color: #334155; font-size: 16px; }
         
-        /* تنسيق الألوان الموحدة */
+        /* تنسيق الحالات والألوان */
         .status-ok { color: #16a34a; font-weight: bold; background: #dcfce7; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
         .status-wait { color: #ea580c; font-weight: bold; background: #ffedd5; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
         .status-cancel { color: #dc2626; font-weight: bold; background: #fee2e2; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
+        
+        /* لون خاص ومميز للعودة فقط (Retour) */
+        .status-retour { color: #9333ea; font-weight: bold; background: #f3e5f5; padding: 6px 12px; border-radius: 20px; font-size: 14px; border: 1px solid #c084fc; }
         
         .loading { text-align: center; color: #64748b; font-style: italic; margin: 20px 0; }
         
@@ -32,6 +49,11 @@
     <div class="container">
         <h1 id="busTitle">⏳ Chargement de la navette...</h1>
         
+        <!-- عنصر عرض عداد الركاب -->
+        <div id="passengerCounter" class="counter-box">
+            Nombre total de personnes dans le bus : 0
+        </div>
+
         <div class="live-text">
             <span class="live-indicator"></span> Mises à jour automatiques activées
         </div>
@@ -83,10 +105,13 @@
 
                 if(tokens.length === 0) {
                     ul.innerHTML = "<p style='text-align:center; color:#64748b;'>Aucun employé trouvé pour cette navette.</p>";
+                    document.getElementById('passengerCounter').innerText = "Nombre total de personnes dans le bus : 0";
                     return;
                 }
 
                 tokens.sort((a, b) => (a.nom_employe || "").localeCompare(b.nom_employe || ""));
+
+                let totalPersonnes = 0; // عداد الأشخاص
 
                 tokens.forEach(emp => {
                     let li = document.createElement('li');
@@ -102,7 +127,7 @@
                     
                     let statusDiv = document.createElement('div');
                     
-                    // التوزيع الدقيق للنصوص الموحدة حسب طلبك
+                    // توزيع الشروط مع الحفاظ على الحالات السابقة وإضافة العداد والعودة فقط
                     if (!choix) {
                         statusDiv.innerHTML = "⏳ En attente";
                         statusDiv.className = "status-wait";
@@ -111,15 +136,24 @@
                         statusDiv.innerHTML = "🚫 Pas de navette";
                         statusDiv.className = "status-cancel";
                     } 
+                    else if (choixLower.includes("retour") || choixLower.includes("retour uniquement")) {
+                        statusDiv.innerHTML = "↩️ Retour Uniquement";
+                        statusDiv.className = "status-retour";
+                        totalPersonnes++; // محسوب في الناقلة (رحلة العودة)
+                    }
                     else {
                         statusDiv.innerHTML = "✔️ Confirmé";
                         statusDiv.className = "status-ok";
+                        totalPersonnes++; // محسوب في الناقلة
                     }
 
                     li.appendChild(nameDiv);
                     li.appendChild(statusDiv);
                     ul.appendChild(li);
                 });
+
+                // تحديث عداد الركاب الإجمالي في الشاشة
+                document.getElementById('passengerCounter').innerText = "Nombre total de personnes dans le bus : " + totalPersonnes;
 
             } catch (error) {
                 console.error(error);
