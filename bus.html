@@ -9,18 +9,62 @@
         .container { max-width: 600px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
         h1 { color: #003366; text-align: center; font-size: 22px; border-bottom: 2px solid #FF9800; padding-bottom: 10px; margin-top: 0; }
         
-        /* تنسيق عداد المؤكدين */
-        .counter-box {
-            background-color: #e3f2fd;
-            border: 2px solid #1565c0;
-            color: #0d47a1;
-            padding: 12px;
-            border-radius: 8px;
-            text-align: center;
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 20px;
+        /* =========================================
+           تصميم العداد الاحترافي والجذاب جداً
+           ========================================= */
+        .counter-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 25px;
+            margin-top: 15px;
         }
+        .counter-box {
+            background: linear-gradient(135deg, #003366 0%, #1565C0 100%);
+            color: #ffffff;
+            padding: 15px 30px;
+            border-radius: 50px;
+            box-shadow: 0 8px 20px rgba(21, 101, 192, 0.25);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            border: 2px solid #64B5F6;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .counter-box:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 25px rgba(21, 101, 192, 0.4);
+        }
+        .counter-icon {
+            background: rgba(255, 255, 255, 0.15);
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .counter-details {
+            text-align: left;
+        }
+        .counter-text {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #E3F2FD;
+            margin-bottom: 2px;
+        }
+        .counter-number {
+            font-size: 32px;
+            font-weight: 900;
+            color: #FFB300; /* لون ذهبي بارز للرقم */
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+            line-height: 1;
+        }
+        /* ========================================= */
 
         .list-group { list-style: none; padding: 0; margin: 0; }
         .list-item { padding: 15px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; transition: background-color 0.3s; }
@@ -46,8 +90,15 @@
     <div class="container">
         <h1 id="busTitle">⏳ Chargement de la navette...</h1>
         
-        <div id="passengerCounter" class="counter-box">
-            Nombre total de personnes confirmées : 0
+        <!-- العداد الاحترافي الجديد -->
+        <div class="counter-container">
+            <div class="counter-box">
+                <div class="counter-icon">🚌</div>
+                <div class="counter-details">
+                    <div class="counter-text">Confirmations (Départ)</div>
+                    <div class="counter-number" id="passengerCounter">0</div>
+                </div>
+            </div>
         </div>
 
         <div class="live-text">
@@ -104,7 +155,7 @@
 
                 if(tokens.length === 0) {
                     ul.innerHTML = "<p style='text-align:center; color:#64748b;'>Aucun employé trouvé pour cette navette.</p>";
-                    document.getElementById('passengerCounter').innerText = "Nombre total de personnes confirmées : 0";
+                    document.getElementById('passengerCounter').innerText = "0";
                     return;
                 }
 
@@ -126,7 +177,6 @@
                     
                     let statusDiv = document.createElement('div');
                     
-                    // الإصلاح هنا: التحقق من وجود Retour وعدم وجود Depart في نفس الوقت
                     if (!choix) {
                         statusDiv.innerHTML = "⏳ En attente";
                         statusDiv.className = "status-wait";
@@ -138,13 +188,12 @@
                     else if (choixLower.includes("retour") && !choixLower.includes("depart")) {
                         statusDiv.innerHTML = "↩️ Retour Uniquement";
                         statusDiv.className = "status-retour";
-                        totalConfirmes++;
+                        // ❌ لا نزيد العداد هنا لأنها عودة فقط (الذهاب غير مؤكد)
                     }
                     else {
-                        // هنا تدخل حالات (Depart Uniquement) و (Depart & Retour) معاً
                         statusDiv.innerHTML = "✔️ Confirmé";
                         statusDiv.className = "status-ok";
-                        totalConfirmes++;
+                        totalConfirmes++; // ✅ نحسب العداد فقط لمن أكد الذهاب
                     }
 
                     li.appendChild(nameDiv);
@@ -152,7 +201,8 @@
                     ul.appendChild(li);
                 });
 
-                document.getElementById('passengerCounter').innerText = "Nombre total de personnes confirmées : " + totalConfirmes;
+                // تحديث رقم العداد فقط (الرقم الذهبي البارز)
+                document.getElementById('passengerCounter').innerText = totalConfirmes;
 
             } catch (error) {
                 console.error(error);
