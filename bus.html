@@ -82,7 +82,6 @@
                 });
                 let tokens = await res1.json();
 
-                // جلب الاستجابات مرتبة تنازلياً للحصول على أحدث اختيار قام به الموظف بدقة
                 let res2 = await fetch(`${SUPABASE_URL}/rest/v1/navette_reponses?select=email_employe,choix,created_at&order=created_at.desc`, {
                     headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
                 });
@@ -90,12 +89,11 @@
 
                 document.getElementById('loading').style.display = 'none';
 
-                // حفظ أحدث اختيار فقط لكل إيميل
                 let userStatus = {};
                 responses.forEach(r => {
                     if(r.email_employe && r.choix) {
                         let emailKey = r.email_employe.trim().toLowerCase();
-                        if(!userStatus[emailKey]) { // يأخذ السجل الأول (الأحدث زمنياً بسبب الترتيب تنازلياً)
+                        if(!userStatus[emailKey]) {
                             userStatus[emailKey] = r.choix.trim();
                         }
                     }
@@ -128,7 +126,7 @@
                     
                     let statusDiv = document.createElement('div');
                     
-                    // تحليل دقيق للحالة ليتم تحديثها فوراً عند التغيير
+                    // الإصلاح هنا: التحقق من وجود Retour وعدم وجود Depart في نفس الوقت
                     if (!choix) {
                         statusDiv.innerHTML = "⏳ En attente";
                         statusDiv.className = "status-wait";
@@ -137,15 +135,16 @@
                         statusDiv.innerHTML = "🚫 Pas de navette";
                         statusDiv.className = "status-cancel";
                     } 
-                    else if (choixLower.includes("retour")) {
+                    else if (choixLower.includes("retour") && !choixLower.includes("depart")) {
                         statusDiv.innerHTML = "↩️ Retour Uniquement";
                         statusDiv.className = "status-retour";
-                        totalConfirmes++; // محسوب في العداد
+                        totalConfirmes++;
                     }
                     else {
+                        // هنا تدخل حالات (Depart Uniquement) و (Depart & Retour) معاً
                         statusDiv.innerHTML = "✔️ Confirmé";
                         statusDiv.className = "status-ok";
-                        totalConfirmes++; // محسوب في العداد
+                        totalConfirmes++;
                     }
 
                     li.appendChild(nameDiv);
@@ -163,7 +162,6 @@
         
         loadBusStatus();
 
-        // التحديث اللحظي عند أي تعديل أو إدخال جديد في جدول الاستجابات
         supabaseClient
           .channel('public:navette_reponses')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'navette_reponses' }, payload => {
