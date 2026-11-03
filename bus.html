@@ -7,21 +7,33 @@
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; }
         .container { max-width: 600px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
-        .logo-container { text-align: center; margin-bottom: 20px; }
         h1 { color: #003366; text-align: center; font-size: 22px; border-bottom: 2px solid #FF9800; padding-bottom: 10px; margin-top: 0; }
         .list-group { list-style: none; padding: 0; margin: 0; }
-        .list-item { padding: 15px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+        .list-item { padding: 15px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; transition: background-color 0.3s; }
         .list-item:last-child { border-bottom: none; }
         .emp-name { font-weight: 600; color: #334155; font-size: 16px; }
         .status-ok { color: #16a34a; font-weight: bold; background: #dcfce7; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
         .status-wait { color: #ea580c; font-weight: bold; background: #ffedd5; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
         .loading { text-align: center; color: #64748b; font-style: italic; margin: 20px 0; }
+        
+        /* تصميم النقطة الحمراء التي تنبض لتدل على أن البث مباشر */
+        .live-indicator { display: inline-block; width: 10px; height: 10px; background-color: #ef4444; border-radius: 50%; animation: pulse 1.5s infinite; margin-right: 8px; vertical-align: middle; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        .live-text { text-align: center; font-size: 12px; color: #64748b; margin-bottom: 20px; font-weight: bold; }
     </style>
+    
+    <!-- مكتبة Supabase للاتصال اللحظي -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div class="container">
         <h1 id="busTitle">⏳ Chargement de la navette...</h1>
-        <div id="loading" class="loading">Mise à jour en temps réel depuis la base de données...</div>
+        
+        <div class="live-text">
+            <span class="live-indicator"></span> Mises à jour automatiques activées
+        </div>
+        
+        <div id="loading" class="loading">Chargement des données...</div>
         <ul class="list-group" id="passengersList"></ul>
     </div>
 
@@ -30,6 +42,9 @@
         const SUPABASE_URL = "https://dsmflhnjmnllvhkuepit.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM";
         
+        // إنشاء عميل Supabase للاتصال الحي
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
         async function loadBusStatus() {
             const params = new URLSearchParams(window.location.search);
             const busName = params.get('bus');
@@ -43,13 +58,13 @@
             document.getElementById('busTitle').innerText = "🚌 Navette : " + busName;
 
             try {
-                // 1. جلب قائمة الركاب المسجلين في هذه الحافلة
+                // جلب قائمة الركاب
                 let res1 = await fetch(`${SUPABASE_URL}/rest/v1/tokens_navette?bus_employe=eq.${encodeURIComponent(busName)}`, {
                     headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
                 });
                 let tokens = await res1.json();
 
-                // 2. جلب جميع الردود لمعرفة من أكد
+                // جلب الردود
                 let res2 = await fetch(`${SUPABASE_URL}/rest/v1/navette_reponses?select=email_employe,choix`, {
                     headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
                 });
@@ -57,7 +72,6 @@
 
                 document.getElementById('loading').style.display = 'none';
 
-                // فلترة الردود التي ليست "إلغاء"
                 let confirmedEmails = new Set(
                     responses
                     .filter(r => r.choix !== "Pas_De_Navette")
@@ -72,7 +86,6 @@
                     return;
                 }
 
-                // ترتيب الأسماء أبجدياً
                 tokens.sort((a, b) => a.nom_employe.localeCompare(b.nom_employe));
 
                 tokens.forEach(emp => {
@@ -102,11 +115,21 @@
             } catch (error) {
                 console.error(error);
                 document.getElementById('busTitle').innerText = "⚠️ Erreur de connexion";
-                document.getElementById('loading').innerText = "Impossible de se connecter à la base de données.";
             }
         }
         
+        // 1. تحميل البيانات لأول مرة عند فتح الصفحة
         loadBusStatus();
+
+        // 2. السحر هنا: الاستماع اللحظي (Realtime) لأي عامل يسجل
+        supabaseClient
+          .channel('public:navette_reponses')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'navette_reponses' }, payload => {
+              console.log('Un changement a eu lieu !', payload);
+              // بمجرد أن يسجل شخص ما، نقوم بتحديث القائمة بصمت في الخلفية لتتغير أمامه فوراً
+              loadBusStatus(); 
+          })
+          .subscribe();
     </script>
 </body>
 </html>
