@@ -59,7 +59,6 @@
             overflow: hidden;
             border: 1px solid #1e40af;
         }
-        /* تأثير العلامة المائية في خلفية العداد */
         .counter-widget::after {
             content: '🚌';
             position: absolute;
@@ -84,7 +83,7 @@
         .counter-value {
             font-size: 46px;
             font-weight: 900;
-            color: #FFB300; /* اللون الذهبي الفخم */
+            color: #FFB300; 
             text-shadow: 0 4px 10px rgba(0,0,0,0.3);
             line-height: 1;
         }
@@ -105,16 +104,18 @@
         /* ========================================= */
 
         .list-group { list-style: none; padding: 0; margin: 0; }
-        .list-item { padding: 16px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; transition: background-color 0.3s; }
+        .list-item { padding: 16px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; transition: background-color 0.3s; gap: 10px; }
         .list-item:hover { background-color: #f8fafc; }
         .list-item:last-child { border-bottom: none; }
-        .emp-name { font-weight: 700; color: #1e293b; font-size: 16px; }
         
-        /* تنسيق الألوان والحالات */
-        .status-ok { color: #16a34a; font-weight: bold; background: #dcfce7; padding: 6px 12px; border-radius: 20px; font-size: 13px; border: 1px solid #bbf7d0; }
-        .status-retour { color: #9333ea; font-weight: bold; background: #f3e5f5; padding: 6px 12px; border-radius: 20px; font-size: 13px; border: 1px solid #e9d5ff; }
-        .status-wait { color: #ea580c; font-weight: bold; background: #ffedd5; padding: 6px 12px; border-radius: 20px; font-size: 13px; border: 1px solid #fed7aa; }
-        .status-cancel { color: #dc2626; font-weight: bold; background: #fee2e2; padding: 6px 12px; border-radius: 20px; font-size: 13px; border: 1px solid #fecaca; }
+        /* تعديل اسم العامل ليأخذ مساحته دون تكسير الحالة */
+        .emp-name { font-weight: 700; color: #1e293b; font-size: 16px; word-break: break-word; }
+        
+        /* تعديل الحالات: إضافة white-space: nowrap لمنع الانقسام لسطرين */
+        .status-ok { color: #16a34a; font-weight: bold; background: #dcfce7; padding: 6px 12px; border-radius: 20px; font-size: 13px; border: 1px solid #bbf7d0; white-space: nowrap; flex-shrink: 0; }
+        .status-retour { color: #9333ea; font-weight: bold; background: #f3e5f5; padding: 6px 12px; border-radius: 20px; font-size: 13px; border: 1px solid #e9d5ff; white-space: nowrap; flex-shrink: 0; }
+        .status-wait { color: #ea580c; font-weight: bold; background: #ffedd5; padding: 6px 12px; border-radius: 20px; font-size: 13px; border: 1px solid #fed7aa; white-space: nowrap; flex-shrink: 0; }
+        .status-cancel { color: #dc2626; font-weight: bold; background: #fee2e2; padding: 6px 12px; border-radius: 20px; font-size: 13px; border: 1px solid #fecaca; white-space: nowrap; flex-shrink: 0; }
         
         .loading { text-align: center; color: #64748b; font-style: italic; margin: 20px 0; }
         
@@ -242,7 +243,6 @@
                     ul.appendChild(li);
                 });
 
-                // تحديث العداد الذهبي الفخم
                 document.getElementById('passengerCounter').innerText = totalConfirmes;
 
             } catch (error) {
