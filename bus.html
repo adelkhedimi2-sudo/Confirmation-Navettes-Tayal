@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statut de la Navette - En Direct</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        .logo-container { text-align: center; margin-bottom: 20px; }
+        h1 { color: #003366; text-align: center; font-size: 22px; border-bottom: 2px solid #FF9800; padding-bottom: 10px; margin-top: 0; }
+        .list-group { list-style: none; padding: 0; margin: 0; }
+        .list-item { padding: 15px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+        .list-item:last-child { border-bottom: none; }
+        .emp-name { font-weight: 600; color: #334155; font-size: 16px; }
+        .status-ok { color: #16a34a; font-weight: bold; background: #dcfce7; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
+        .status-wait { color: #ea580c; font-weight: bold; background: #ffedd5; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
+        .loading { text-align: center; color: #64748b; font-style: italic; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="busTitle">⏳ Chargement de la navette...</h1>
+        <div id="loading" class="loading">Mise à jour en temps réel depuis la base de données...</div>
+        <ul class="list-group" id="passengersList"></ul>
+    </div>
+
+    <script>
+        // إعدادات قاعدة البيانات الخاصة بك
+        const SUPABASE_URL = "https://dsmflhnjmnllvhkuepit.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM";
+        
+        async function loadBusStatus() {
+            const params = new URLSearchParams(window.location.search);
+            const busName = params.get('bus');
+            
+            if(!busName) {
+                document.getElementById('busTitle').innerText = "❌ Erreur: Aucune navette spécifiée";
+                document.getElementById('loading').style.display = 'none';
+                return;
+            }
+            
+            document.getElementById('busTitle').innerText = "🚌 Navette : " + busName;
+
+            try {
+                // 1. جلب قائمة الركاب المسجلين في هذه الحافلة
+                let res1 = await fetch(`${SUPABASE_URL}/rest/v1/tokens_navette?bus_employe=eq.${encodeURIComponent(busName)}`, {
+                    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+                });
+                let tokens = await res1.json();
+
+                // 2. جلب جميع الردود لمعرفة من أكد
+                let res2 = await fetch(`${SUPABASE_URL}/rest/v1/navette_reponses?select=email_employe,choix`, {
+                    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+                });
+                let responses = await res2.json();
+
+                document.getElementById('loading').style.display = 'none';
+
+                // فلترة الردود التي ليست "إلغاء"
+                let confirmedEmails = new Set(
+                    responses
+                    .filter(r => r.choix !== "Pas_De_Navette")
+                    .map(r => r.email_employe.trim().toLowerCase())
+                );
+
+                let ul = document.getElementById('passengersList');
+                ul.innerHTML = "";
+
+                if(tokens.length === 0) {
+                    ul.innerHTML = "<p style='text-align:center; color:#64748b;'>Aucun employé trouvé pour cette navette.</p>";
+                    return;
+                }
+
+                // ترتيب الأسماء أبجدياً
+                tokens.sort((a, b) => a.nom_employe.localeCompare(b.nom_employe));
+
+                tokens.forEach(emp => {
+                    let li = document.createElement('li');
+                    li.className = "list-item";
+                    
+                    let isConfirmed = confirmedEmails.has(emp.email.trim().toLowerCase());
+                    
+                    let nameDiv = document.createElement('div');
+                    nameDiv.className = "emp-name";
+                    nameDiv.innerText = emp.nom_employe || emp.email.split('@')[0];
+                    
+                    let statusDiv = document.createElement('div');
+                    if(isConfirmed) {
+                        statusDiv.innerHTML = "✔️ Confirmé";
+                        statusDiv.className = "status-ok";
+                    } else {
+                        statusDiv.innerHTML = "⏳ En attente";
+                        statusDiv.className = "status-wait";
+                    }
+
+                    li.appendChild(nameDiv);
+                    li.appendChild(statusDiv);
+                    ul.appendChild(li);
+                });
+
+            } catch (error) {
+                console.error(error);
+                document.getElementById('busTitle').innerText = "⚠️ Erreur de connexion";
+                document.getElementById('loading').innerText = "Impossible de se connecter à la base de données.";
+            }
+        }
+        
+        loadBusStatus();
+    </script>
+</body>
+</html>
