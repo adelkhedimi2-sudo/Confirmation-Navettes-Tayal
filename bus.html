@@ -6,20 +6,34 @@
     <title>Statut de la Navette - En Direct</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; }
-        .container { max-width: 600px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        .container { max-width: 650px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
         h1 { color: #003366; text-align: center; font-size: 22px; border-bottom: 2px solid #FF9800; padding-bottom: 10px; margin-top: 0; }
         
-        /* تنسيق عداد الأشخاص الإجمالي */
-        .counter-box {
-            background-color: #e3f2fd;
-            border: 2px solid #1565c0;
-            color: #0d47a1;
-            padding: 10px;
+        /* تصميم الجدول الذكي للإحصائيات */
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background-color: #f8fafc;
             border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #cbd5e1;
+        }
+        .stats-table th, .stats-table td {
+            padding: 10px 12px;
             text-align: center;
-            font-size: 16px;
+            font-size: 14px;
+            border-bottom: 1px solid #e2e8f0;
+            border-right: 1px solid #e2e8f0;
+        }
+        .stats-table th {
+            background-color: #003366;
+            color: #ffffff;
+            font-weight: 600;
+        }
+        .stats-table td {
             font-weight: bold;
-            margin-bottom: 15px;
+            color: #1e293b;
         }
 
         .list-group { list-style: none; padding: 0; margin: 0; }
@@ -31,8 +45,6 @@
         .status-ok { color: #16a34a; font-weight: bold; background: #dcfce7; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
         .status-wait { color: #ea580c; font-weight: bold; background: #ffedd5; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
         .status-cancel { color: #dc2626; font-weight: bold; background: #fee2e2; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
-        
-        /* لون خاص ومميز للعودة فقط (Retour) */
         .status-retour { color: #9333ea; font-weight: bold; background: #f3e5f5; padding: 6px 12px; border-radius: 20px; font-size: 14px; border: 1px solid #c084fc; }
         
         .loading { text-align: center; color: #64748b; font-style: italic; margin: 20px 0; }
@@ -42,17 +54,29 @@
         .live-text { text-align: center; font-size: 12px; color: #64748b; margin-bottom: 20px; font-weight: bold; }
     </style>
     
-    <!-- مكتبة Supabase للاتصال اللحظي -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div class="container">
         <h1 id="busTitle">⏳ Chargement de la navette...</h1>
         
-        <!-- عنصر عرض عداد الركاب -->
-        <div id="passengerCounter" class="counter-box">
-            Nombre total de personnes dans le bus : 0
-        </div>
+        <!-- الجدول الذكي للإحصائيات -->
+        <table class="stats-table">
+            <thead>
+                <tr>
+                    <th>Aller / Confirmé (ذهاب)</th>
+                    <th>Retour Uniquement (عودة فقط)</th>
+                    <th>Total dans le Bus (إجمالي الركاب)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td id="countAller" style="color: #16a34a;">0</td>
+                    <td id="countRetour" style="color: #9333ea;">0</td>
+                    <td id="countTotal" style="color: #003366; font-size: 16px;">0</td>
+                </tr>
+            </tbody>
+        </table>
 
         <div class="live-text">
             <span class="live-indicator"></span> Mises à jour automatiques activées
@@ -105,13 +129,17 @@
 
                 if(tokens.length === 0) {
                     ul.innerHTML = "<p style='text-align:center; color:#64748b;'>Aucun employé trouvé pour cette navette.</p>";
-                    document.getElementById('passengerCounter').innerText = "Nombre total de personnes dans le bus : 0";
+                    document.getElementById('countAller').innerText = "0";
+                    document.getElementById('countRetour').innerText = "0";
+                    document.getElementById('countTotal').innerText = "0";
                     return;
                 }
 
                 tokens.sort((a, b) => (a.nom_employe || "").localeCompare(b.nom_employe || ""));
 
-                let totalPersonnes = 0; // عداد الأشخاص
+                let totalAller = 0;   // عداد الذهاب / التأكيد العادي
+                let totalRetour = 0;  // عداد العودة فقط
+                let totalBus = 0;     // إجمالي الأشخاص في الحافلة
 
                 tokens.forEach(emp => {
                     let li = document.createElement('li');
@@ -127,7 +155,6 @@
                     
                     let statusDiv = document.createElement('div');
                     
-                    // توزيع الشروط مع الحفاظ على الحالات السابقة وإضافة العداد والعودة فقط
                     if (!choix) {
                         statusDiv.innerHTML = "⏳ En attente";
                         statusDiv.className = "status-wait";
@@ -139,12 +166,14 @@
                     else if (choixLower.includes("retour") || choixLower.includes("retour uniquement")) {
                         statusDiv.innerHTML = "↩️ Retour Uniquement";
                         statusDiv.className = "status-retour";
-                        totalPersonnes++; // محسوب في الناقلة (رحلة العودة)
+                        totalRetour++; // حساب خاص بالعودة فقط
+                        totalBus++;    // محسوب ضمن المتواجدين
                     }
                     else {
                         statusDiv.innerHTML = "✔️ Confirmé";
                         statusDiv.className = "status-ok";
-                        totalPersonnes++; // محسوب في الناقلة
+                        totalAller++;  // حساب الذهاب / التأكيد
+                        totalBus++;    // محسوب ضمن المتواجدين
                     }
 
                     li.appendChild(nameDiv);
@@ -152,8 +181,10 @@
                     ul.appendChild(li);
                 });
 
-                // تحديث عداد الركاب الإجمالي في الشاشة
-                document.getElementById('passengerCounter').innerText = "Nombre total de personnes dans le bus : " + totalPersonnes;
+                // تحديث الجدول الذكي بالإحصائيات الحية
+                document.getElementById('countAller').innerText = totalAller;
+                document.getElementById('countRetour').innerText = totalRetour;
+                document.getElementById('countTotal').innerText = totalBus;
 
             } catch (error) {
                 console.error(error);
@@ -163,7 +194,6 @@
         
         loadBusStatus();
 
-        // التحديث اللحظي الأوتوماتيكي
         supabaseClient
           .channel('public:navette_reponses')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'navette_reponses' }, payload => {
