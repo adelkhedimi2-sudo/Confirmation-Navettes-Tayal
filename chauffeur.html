@@ -16,19 +16,21 @@
         .driver-name { font-size: 24px; font-weight: 900; color: #1e293b; margin-bottom: 5px; }
         .car-type { font-size: 14px; color: #0ea5e9; font-weight: 700; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; background: #e0f2fe; display: inline-block; padding: 4px 12px; border-radius: 20px; }
         
-        .plate-container { margin-bottom: 25px; }
-        .plate-label { font-size: 11px; color: #94a3b8; font-weight: bold; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
-        .plate-box { background: #facc15; border: 3px solid #111; border-radius: 8px; padding: 10px 20px; display: inline-block; font-size: 22px; font-weight: 900; font-family: 'Courier New', monospace; letter-spacing: 3px; color: #000; box-shadow: inset 0 2px 5px rgba(0,0,0,0.2); }
+        .info-container { margin-bottom: 20px; }
+        .info-label { font-size: 11px; color: #94a3b8; font-weight: bold; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; }
         
-        .btn-call { display: flex; justify-content: center; align-items: center; gap: 10px; background: linear-gradient(135deg, #22c55e, #16a34a); color: white; text-decoration: none; padding: 14px; border-radius: 30px; font-size: 16px; font-weight: bold; box-shadow: 0 6px 15px rgba(34, 197, 94, 0.3); transition: transform 0.2s; }
-        .btn-call:active { transform: scale(0.95); }
+        /* شكل لوحة ترقيم السيارات الجزائرية */
+        .plate-box { background: #facc15; border: 3px solid #111; border-radius: 8px; padding: 8px 15px; display: inline-block; font-size: 20px; font-weight: 900; font-family: 'Courier New', monospace; letter-spacing: 2px; color: #000; box-shadow: inset 0 2px 5px rgba(0,0,0,0.2); }
+        
+        /* خانة عرض رقم الهاتف الأنيقة */
+        .phone-display-box { background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 10px; padding: 10px; font-size: 20px; font-weight: 800; font-family: 'Courier New', monospace; color: #0f172a; display: inline-block; letter-spacing: 2px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.03); width: 80%; }
         
         .empty-state { padding: 40px 20px; text-align: center; color: #64748b; }
         .empty-icon { font-size: 50px; margin-bottom: 15px; opacity: 0.5; }
         
         .live-badge { display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 12px; color: #10b981; font-weight: bold; padding: 15px; background: #f8fafc; border-top: 1px solid #e2e8f0; }
         .pulse { width: 8px; height: 8px; background: #10b981; border-radius: 50%; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 8px rgba(0,0,0,0); } 100% { box-shadow: 0 0 0 0 rgba(0,0,0,0); } }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -69,12 +71,15 @@
                             <div class="driver-name">${d.nom_chauffeur}</div>
                             <div class="car-type">🚘 ${d.type_voiture || 'Véhicule de Transport'}</div>
                             
-                            <div class="plate-container">
-                                <div class="plate-label">Matricule du Véhicule</div>
+                            <div class="info-container">
+                                <div class="info-label">Numéro de Téléphone</div>
+                                <div class="phone-display-box">${d.telephone}</div>
+                            </div>
+
+                            <div class="info-container">
+                                <div class="info-label">Matricule du Véhicule</div>
                                 <div class="plate-box">${d.matricule}</div>
                             </div>
-                            
-                            <a href="tel:${d.telephone}" class="btn-call">📞 Contacter le chauffeur</a>
                         </div>
                         <div class="live-badge">
                             <div class="pulse"></div> Données synchronisées en direct
@@ -101,7 +106,6 @@
         }
 
         loadDriver();
-        // الاستماع المباشر للتغيرات (Realtime)
         supabaseClient.channel('public:chauffeurs_navette').on('postgres_changes', { event: '*', schema: 'public', table: 'chauffeurs_navette' }, payload => { loadDriver(); }).subscribe();
     </script>
 </body>
