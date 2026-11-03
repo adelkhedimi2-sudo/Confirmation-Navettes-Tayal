@@ -9,7 +9,7 @@
         .container { max-width: 600px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
         h1 { color: #003366; text-align: center; font-size: 22px; border-bottom: 2px solid #FF9800; padding-bottom: 10px; margin-top: 0; }
         
-        /* تنسيق عداد المؤكدين (Confirmé) */
+        /* تنسيق عداد المؤكدين */
         .counter-box {
             background-color: #e3f2fd;
             border: 2px solid #1565c0;
@@ -27,8 +27,9 @@
         .list-item:last-child { border-bottom: none; }
         .emp-name { font-weight: 600; color: #334155; font-size: 16px; }
         
-        /* تنسيق الألوان */
+        /* تنسيق الألوان والحالات */
         .status-ok { color: #16a34a; font-weight: bold; background: #dcfce7; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
+        .status-retour { color: #9333ea; font-weight: bold; background: #f3e5f5; padding: 6px 12px; border-radius: 20px; font-size: 14px; border: 1px solid #c084fc; }
         .status-wait { color: #ea580c; font-weight: bold; background: #ffedd5; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
         .status-cancel { color: #dc2626; font-weight: bold; background: #fee2e2; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
         
@@ -45,7 +46,6 @@
     <div class="container">
         <h1 id="busTitle">⏳ Chargement de la navette...</h1>
         
-        <!-- عداد المؤكدين (Confirmé) -->
         <div id="passengerCounter" class="counter-box">
             Nombre total de personnes confirmées : 0
         </div>
@@ -82,17 +82,22 @@
                 });
                 let tokens = await res1.json();
 
-                let res2 = await fetch(`${SUPABASE_URL}/rest/v1/navette_reponses?select=email_employe,choix`, {
+                // جلب الاستجابات مرتبة تنازلياً للحصول على أحدث اختيار قام به الموظف بدقة
+                let res2 = await fetch(`${SUPABASE_URL}/rest/v1/navette_reponses?select=email_employe,choix,created_at&order=created_at.desc`, {
                     headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
                 });
                 let responses = await res2.json();
 
                 document.getElementById('loading').style.display = 'none';
 
+                // حفظ أحدث اختيار فقط لكل إيميل
                 let userStatus = {};
                 responses.forEach(r => {
                     if(r.email_employe && r.choix) {
-                        userStatus[r.email_employe.trim().toLowerCase()] = r.choix.trim();
+                        let emailKey = r.email_employe.trim().toLowerCase();
+                        if(!userStatus[emailKey]) { // يأخذ السجل الأول (الأحدث زمنياً بسبب الترتيب تنازلياً)
+                            userStatus[emailKey] = r.choix.trim();
+                        }
                     }
                 });
 
@@ -107,7 +112,7 @@
 
                 tokens.sort((a, b) => (a.nom_employe || "").localeCompare(b.nom_employe || ""));
 
-                let totalConfirmes = 0; // عداد المؤكدين
+                let totalConfirmes = 0;
 
                 tokens.forEach(emp => {
                     let li = document.createElement('li');
@@ -123,6 +128,7 @@
                     
                     let statusDiv = document.createElement('div');
                     
+                    // تحليل دقيق للحالة ليتم تحديثها فوراً عند التغيير
                     if (!choix) {
                         statusDiv.innerHTML = "⏳ En attente";
                         statusDiv.className = "status-wait";
@@ -131,10 +137,15 @@
                         statusDiv.innerHTML = "🚫 Pas de navette";
                         statusDiv.className = "status-cancel";
                     } 
+                    else if (choixLower.includes("retour")) {
+                        statusDiv.innerHTML = "↩️ Retour Uniquement";
+                        statusDiv.className = "status-retour";
+                        totalConfirmes++; // محسوب في العداد
+                    }
                     else {
                         statusDiv.innerHTML = "✔️ Confirmé";
                         statusDiv.className = "status-ok";
-                        totalConfirmes++; // حساب أي تأكيد (بما فيها Départ & Retour) ضمن المؤكدين
+                        totalConfirmes++; // محسوب في العداد
                     }
 
                     li.appendChild(nameDiv);
@@ -142,7 +153,6 @@
                     ul.appendChild(li);
                 });
 
-                // تحديث عداد المؤكدين
                 document.getElementById('passengerCounter').innerText = "Nombre total de personnes confirmées : " + totalConfirmes;
 
             } catch (error) {
@@ -153,6 +163,7 @@
         
         loadBusStatus();
 
+        // التحديث اللحظي عند أي تعديل أو إدخال جديد في جدول الاستجابات
         supabaseClient
           .channel('public:navette_reponses')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'navette_reponses' }, payload => {
