@@ -13,7 +13,7 @@
         .list-item:last-child { border-bottom: none; }
         .emp-name { font-weight: 600; color: #334155; font-size: 16px; }
         
-        /* تنسيق الألوان */
+        /* تنسيق الألوان الموحدة */
         .status-ok { color: #16a34a; font-weight: bold; background: #dcfce7; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
         .status-wait { color: #ea580c; font-weight: bold; background: #ffedd5; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
         .status-cancel { color: #dc2626; font-weight: bold; background: #fee2e2; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
@@ -25,6 +25,7 @@
         .live-text { text-align: center; font-size: 12px; color: #64748b; margin-bottom: 20px; font-weight: bold; }
     </style>
     
+    <!-- مكتبة Supabase للاتصال اللحظي -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -101,19 +102,17 @@
                     
                     let statusDiv = document.createElement('div');
                     
-                    // إذا لم يصوت بعد
+                    // التوزيع الدقيق للنصوص الموحدة حسب طلبك
                     if (!choix) {
                         statusDiv.innerHTML = "⏳ En attente";
                         statusDiv.className = "status-wait";
                     } 
-                    // إذا اختار عدم وجود حافلة أو الإلغاء
                     else if (choixLower.includes("pas") || choixLower.includes("annul")) {
-                        statusDiv.innerHTML = "🚫 " + choix;
+                        statusDiv.innerHTML = "🚫 Pas de navette";
                         statusDiv.className = "status-cancel";
                     } 
-                    // باقي خيارات التأكيد
                     else {
-                        statusDiv.innerHTML = "✔️ " + choix;
+                        statusDiv.innerHTML = "✔️ Confirmé";
                         statusDiv.className = "status-ok";
                     }
 
@@ -130,6 +129,7 @@
         
         loadBusStatus();
 
+        // التحديث اللحظي الأوتوماتيكي
         supabaseClient
           .channel('public:navette_reponses')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'navette_reponses' }, payload => {
