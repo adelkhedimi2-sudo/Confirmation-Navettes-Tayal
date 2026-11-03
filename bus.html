@@ -12,20 +12,17 @@
         .list-item { padding: 15px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; transition: background-color 0.3s; }
         .list-item:last-child { border-bottom: none; }
         .emp-name { font-weight: 600; color: #334155; font-size: 16px; }
-        
-        /* الألوان والحالات */
         .status-ok { color: #16a34a; font-weight: bold; background: #dcfce7; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
         .status-wait { color: #ea580c; font-weight: bold; background: #ffedd5; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
-        .status-cancel { color: #dc2626; font-weight: bold; background: #fee2e2; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
-        
         .loading { text-align: center; color: #64748b; font-style: italic; margin: 20px 0; }
         
+        /* تصميم النقطة الحمراء التي تنبض لتدل على أن البث مباشر */
         .live-indicator { display: inline-block; width: 10px; height: 10px; background-color: #ef4444; border-radius: 50%; animation: pulse 1.5s infinite; margin-right: 8px; vertical-align: middle; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
         .live-text { text-align: center; font-size: 12px; color: #64748b; margin-bottom: 20px; font-weight: bold; }
     </style>
     
-    <!-- مكتبة Supabase -->
+    <!-- مكتبة Supabase للاتصال اللحظي -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -41,9 +38,11 @@
     </div>
 
     <script>
+        // إعدادات قاعدة البيانات الخاصة بك
         const SUPABASE_URL = "https://dsmflhnjmnllvhkuepit.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM";
         
+        // إنشاء عميل Supabase للاتصال الحي
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         async function loadBusStatus() {
@@ -59,13 +58,13 @@
             document.getElementById('busTitle').innerText = "🚌 Navette : " + busName;
 
             try {
-                // جلب العمال المرتبطين بهذه الحافلة
+                // جلب قائمة الركاب
                 let res1 = await fetch(`${SUPABASE_URL}/rest/v1/tokens_navette?bus_employe=eq.${encodeURIComponent(busName)}`, {
                     headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
                 });
                 let tokens = await res1.json();
 
-                // جلب كل الردود المسجلة
+                // جلب الردود
                 let res2 = await fetch(`${SUPABASE_URL}/rest/v1/navette_reponses?select=email_employe,choix`, {
                     headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
                 });
@@ -73,13 +72,11 @@
 
                 document.getElementById('loading').style.display = 'none';
 
-                // تخزين الردود بحيث يتم ربط الإيميل باختياره الأخير بدقة
-                let userStatus = {};
-                responses.forEach(r => {
-                    if(r.email_employe) {
-                        userStatus[r.email_employe.trim().toLowerCase()] = r.choix;
-                    }
-                });
+                let confirmedEmails = new Set(
+                    responses
+                    .filter(r => r.choix !== "Pas_De_Navette")
+                    .map(r => r.email_employe.trim().toLowerCase())
+                );
 
                 let ul = document.getElementById('passengersList');
                 ul.innerHTML = "";
@@ -89,27 +86,20 @@
                     return;
                 }
 
-                tokens.sort((a, b) => (a.nom_employe || "").localeCompare(b.nom_employe || ""));
+                tokens.sort((a, b) => a.nom_employe.localeCompare(b.nom_employe));
 
                 tokens.forEach(emp => {
                     let li = document.createElement('li');
                     li.className = "list-item";
                     
-                    let email = (emp.email || "").trim().toLowerCase();
-                    let rawChoix = userStatus[email] || "";
-                    let choix = rawChoix.trim().toLowerCase();
+                    let isConfirmed = confirmedEmails.has(emp.email.trim().toLowerCase());
                     
                     let nameDiv = document.createElement('div');
                     nameDiv.className = "emp-name";
                     nameDiv.innerText = emp.nom_employe || emp.email.split('@')[0];
                     
                     let statusDiv = document.createElement('div');
-                    
-                    // التحقق الشامل لمختلف صيغ الخيارات (مؤكد، إلغاء، أو في الانتظار)
-                    if (choix.includes("pas_de_navette") || choix.includes("pas de navette")) {
-                        statusDiv.innerHTML = "🚫 Pas de navette";
-                        statusDiv.className = "status-cancel";
-                    } else if (choix.includes("depart") || choix.includes("retour") || choix.includes("confirm")) {
+                    if(isConfirmed) {
                         statusDiv.innerHTML = "✔️ Confirmé";
                         statusDiv.className = "status-ok";
                     } else {
@@ -128,14 +118,15 @@
             }
         }
         
-        // التحميل الأولي
+        // 1. تحميل البيانات لأول مرة عند فتح الصفحة
         loadBusStatus();
 
-        // التحديث اللحظي (Realtime) المربوط بقاعدة البيانات
+        // 2. السحر هنا: الاستماع اللحظي (Realtime) لأي عامل يسجل
         supabaseClient
           .channel('public:navette_reponses')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'navette_reponses' }, payload => {
-              console.log('Changement en direct détecté:', payload);
+              console.log('Un changement a eu lieu !', payload);
+              // بمجرد أن يسجل شخص ما، نقوم بتحديث القائمة بصمت في الخلفية لتتغير أمامه فوراً
               loadBusStatus(); 
           })
           .subscribe();
