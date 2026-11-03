@@ -13,17 +13,19 @@
         
         .card-body { padding: 30px 20px; text-align: center; }
         .avatar { font-size: 65px; margin-bottom: 10px; text-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .driver-name { font-size: 24px; font-weight: 900; color: #1e293b; margin-bottom: 5px; }
-        .car-type { font-size: 14px; color: #0ea5e9; font-weight: 700; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; background: #e0f2fe; display: inline-block; padding: 4px 12px; border-radius: 20px; }
+        .driver-name { font-size: 24px; font-weight: 900; color: #1e293b; margin-bottom: 8px; }
+        
+        /* تصميم نوع السيارة */
+        .car-type { font-size: 15px; color: #0284c7; font-weight: 800; margin-bottom: 25px; text-transform: uppercase; letter-spacing: 1px; background: #e0f2fe; display: inline-block; padding: 6px 16px; border-radius: 20px; border: 1px solid #bae6fd; }
         
         .info-container { margin-bottom: 20px; }
         .info-label { font-size: 11px; color: #94a3b8; font-weight: bold; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; }
         
-        /* شكل لوحة ترقيم السيارات الجزائرية */
-        .plate-box { background: #facc15; border: 3px solid #111; border-radius: 8px; padding: 8px 15px; display: inline-block; font-size: 20px; font-weight: 900; font-family: 'Courier New', monospace; letter-spacing: 2px; color: #000; box-shadow: inset 0 2px 5px rgba(0,0,0,0.2); }
-        
         /* خانة عرض رقم الهاتف الأنيقة */
-        .phone-display-box { background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 10px; padding: 10px; font-size: 20px; font-weight: 800; font-family: 'Courier New', monospace; color: #0f172a; display: inline-block; letter-spacing: 2px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.03); width: 80%; }
+        .phone-display-box { background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 10px; padding: 10px; font-size: 20px; font-weight: 800; font-family: 'Courier New', monospace; color: #0f172a; display: inline-block; letter-spacing: 2px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.03); width: 85%; }
+        
+        /* لوحة الترقيم */
+        .plate-box { background: #facc15; border: 3px solid #111; border-radius: 8px; padding: 8px 15px; display: inline-block; font-size: 20px; font-weight: 900; font-family: 'Courier New', monospace; letter-spacing: 2px; color: #000; box-shadow: inset 0 2px 5px rgba(0,0,0,0.2); }
         
         .empty-state { padding: 40px 20px; text-align: center; color: #64748b; }
         .empty-icon { font-size: 50px; margin-bottom: 15px; opacity: 0.5; }
@@ -62,6 +64,11 @@
                 
                 if (drivers && drivers.length > 0) {
                     const d = drivers[0];
+                    // التأكد من جلب نوع السيارة ورقم الهاتف والترقيم بدقة
+                    const vehiculeType = d.type_voiture ? d.type_voiture : 'Véhicule standard';
+                    const telNum = d.telephone ? d.telephone : 'Non disponible';
+                    const matNum = d.matricule ? d.matricule : '---';
+
                     card.innerHTML = `
                         <div class="card-header">
                             <h2>🚌 Navette : ${busName}</h2>
@@ -69,16 +76,16 @@
                         <div class="card-body">
                             <div class="avatar">👨‍✈️</div>
                             <div class="driver-name">${d.nom_chauffeur}</div>
-                            <div class="car-type">🚘 ${d.type_voiture || 'Véhicule de Transport'}</div>
+                            <div class="car-type">🚘 ${vehiculeType}</div>
                             
                             <div class="info-container">
                                 <div class="info-label">Numéro de Téléphone</div>
-                                <div class="phone-display-box">${d.telephone}</div>
+                                <div class="phone-display-box">${telNum}</div>
                             </div>
 
                             <div class="info-container">
                                 <div class="info-label">Matricule du Véhicule</div>
-                                <div class="plate-box">${d.matricule}</div>
+                                <div class="plate-box">${matNum}</div>
                             </div>
                         </div>
                         <div class="live-badge">
