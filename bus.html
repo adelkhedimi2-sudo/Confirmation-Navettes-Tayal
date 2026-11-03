@@ -25,6 +25,7 @@
         .live-text { text-align: center; font-size: 12px; color: #64748b; margin-bottom: 20px; font-weight: bold; }
     </style>
     
+    <!-- مكتبة Supabase للاتصال اللحظي -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -91,7 +92,8 @@
                     li.className = "list-item";
                     
                     let email = emp.email.trim().toLowerCase();
-                    let choix = userStatus[email];
+                    let rawChoix = userStatus[email] || "";
+                    let choix = rawChoix.trim().toLowerCase();
                     
                     let nameDiv = document.createElement('div');
                     nameDiv.className = "emp-name";
@@ -99,11 +101,11 @@
                     
                     let statusDiv = document.createElement('div');
                     
-                    // تحديد شكل الألوان والنص حسب الخيار
-                    if (choix === "Pas_De_Navette") {
+                    // التحقق الذكي من الحالات الثلاث
+                    if (choix === "pas_de_navette" || choix === "pas de navette") {
                         statusDiv.innerHTML = "🚫 Pas de navette";
                         statusDiv.className = "status-cancel";
-                    } else if (choix === "Depart" || choix === "Retour" || choix === "Depart_Retour") {
+                    } else if (choix === "depart" || choix === "retour" || choix === "depart_retour") {
                         statusDiv.innerHTML = "✔️ Confirmé";
                         statusDiv.className = "status-ok";
                     } else {
@@ -124,7 +126,7 @@
         
         loadBusStatus();
 
-        // التحديث اللحظي الأوتوماتيكي عند أي تعديل
+        // التحديث اللحظي الأوتوماتيكي عند أي تغيير في قاعدة البيانات
         supabaseClient
           .channel('public:navette_reponses')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'navette_reponses' }, payload => {
