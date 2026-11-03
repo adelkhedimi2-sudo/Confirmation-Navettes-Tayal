@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Suivi des Navettes - TAYAL</title>
-    <!-- استدعاء مكتبة Supabase -->
+    <title>Suivi en Direct - Navettes TAYAL</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
@@ -34,18 +33,6 @@
             margin-bottom: 20px;
             font-weight: bold;
         }
-        /* تصميم عداد الأشخاص */
-        .counter-box {
-            background-color: #e3f2fd;
-            border: 2px solid #1565c0;
-            color: #0d47a1;
-            padding: 12px;
-            border-radius: 8px;
-            text-align: center;
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 20px;
-        }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -73,28 +60,9 @@
             display: inline-block;
         }
         .bg-depart { background-color: #e3f2fd; color: #1565c0; }
+        .bg-retour { background-color: #e8f5e9; color: #2e7d32; }
         .bg-both { background-color: #f3e5f5; color: #7b1fa2; }
         .bg-none { background-color: #eceff1; color: #455a64; }
-
-        /* الزر الأحمر الحي والتفاعلي (En Ligne) لمن يؤكد العودة فقط */
-        .btn-live-rouge {
-            background-color: #D32F2F;
-            color: #ffffff;
-            border: 2px solid #B71C1C;
-            padding: 6px 14px;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: bold;
-            display: inline-block;
-            box-shadow: 0 2px 4px rgba(211, 47, 47, 0.4);
-            animation: pulseRouge 1.5s infinite;
-        }
-        @keyframes pulseRouge {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.03); opacity: 0.85; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-
         .loading {
             text-align: center;
             font-size: 16px;
@@ -108,12 +76,7 @@
 <div class="container">
     <h2>Suivi en Direct - Navettes TAYAL</h2>
     <div id="busName" class="bus-title">Chargement du bus...</div>
-
-    <!-- عداد الأشخاص الموجودين في الحافلة -->
-    <div id="passengerCounter" class="counter-box">
-        Nombre total de personnes dans le bus : 0
-    </div>
-
+    
     <div id="loading" class="loading">Chargement des données...</div>
 
     <table id="resultsTable" style="display: none;">
@@ -131,7 +94,6 @@
 </div>
 
 <script>
-    // ⚠️ ضع رابط ومفتاح Supabase الخاص بمشروعك هنا
     const SUPABASE_URL = 'ضع_رابط_قاعدة_بيانات_supabase_هنا'; 
     const SUPABASE_ANON_KEY = 'ضع_مفتاح_anon_key_هنا';
     
@@ -143,15 +105,6 @@
     if (busCode) {
         document.getElementById('busName').innerText = "Navette / Bus : " + decodeURIComponent(busCode);
         chargerDonneesBus(decodeURIComponent(busCode));
-        
-        // تفعيل التحديث الفوري الحقيقي (Realtime) لتبقى الصفحة خفيفة جداً وتتحدث تلقائياً عند أي تعديل
-        _supabase
-            .channel('public:confirmations_navettes')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'confirmations_navettes' }, payload => {
-                chargerDonneesBus(decodeURIComponent(busCode));
-            })
-            .subscribe();
-
     } else {
         document.getElementById('busName').innerText = "Aucun bus spécifié.";
         document.getElementById('loading').style.display = 'none';
@@ -169,51 +122,45 @@
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
 
-            let totalPersonnes = 0;
-
             if (data && data.length > 0) {
                 data.forEach(row => {
-                    let choixHtml = '';
-                    let estCompte = true;
+                    let choixAffiche = '';
+                    let badgeClass = '';
 
                     if (row.choix === 'Depart') {
-                        choixHtml = `<span class="badge bg-depart">Départ Uniquement</span>`;
+                        choixAffiche = 'Départ Uniquement';
+                        badgeClass = 'bg-depart';
                     } else if (row.choix === 'Retour') {
-                        // الزر الأحمر التفاعلي للعودة فقط
-                        choixHtml = `<span class="btn-live-rouge">🔴 Retour Uniquement (أكد العودة فقط)</span>`;
+                        choixAffiche = 'Retour Uniquement';
+                        badgeClass = 'bg-retour';
                     } else if (row.choix === 'Depart_Retour' || row.choix === 'Depart & Retour') {
-                        choixHtml = `<span class="badge bg-both">Départ & Retour</span>`;
+                        choixAffiche = 'Départ & Retour';
+                        badgeClass = 'bg-both';
                     } else if (row.choix === 'Pas_De_Navette') {
-                        choixHtml = `<span class="badge bg-none">Pas de navette</span>`;
-                        estCompte = false;
+                        choixAffiche = 'Pas de navette';
+                        badgeClass = 'bg-none';
                     } else {
-                        choixHtml = `<span class="badge bg-none">${row.choix || 'En attente'}</span>`;
-                        estCompte = false;
-                    }
-
-                    if (estCompte && row.choix && row.choix !== 'Pas_De_Navette') {
-                        totalPersonnes++;
+                        choixAffiche = row.choix || 'En attente';
+                        badgeClass = 'bg-none';
                     }
 
                     let tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td><strong>${row.nom || 'Employé'}</strong></td>
                         <td>${row.destination || 'Non spécifiée'}</td>
-                        <td>${choixHtml}</td>
+                        <td><span class="badge ${badgeClass}">${choixAffiche}</span></td>
                     `;
                     tbody.appendChild(tr);
                 });
 
-                document.getElementById('passengerCounter').innerText = "Nombre total de personnes dans le bus : " + totalPersonnes;
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('resultsTable').style.display = 'table';
             } else {
                 document.getElementById('loading').innerText = "Aucune confirmation enregistrée pour le moment.";
-                document.getElementById('passengerCounter').innerText = "Nombre total de personnes dans le bus : 0";
             }
         } catch (err) {
             console.error("Erreur de chargement :", err);
-            document.getElementById('loading').innerText = "Erreur lors du chargement des données. Vérifiez vos identifiants Supabase.";
+            document.getElementById('loading').innerText = "Erreur lors du chargement des données.";
         }
     }
 </script>
