@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infos du Chauffeur - En Direct</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 90vh; }
+        .card { background: #fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 400px; overflow: hidden; position: relative; }
+        
+        .card-header { background: linear-gradient(135deg, #003366, #1565C0); color: white; padding: 20px; text-align: center; border-bottom: 4px solid #FF9800; }
+        .card-header h2 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: 1px; }
+        
+        .card-body { padding: 30px 20px; text-align: center; }
+        .avatar { font-size: 65px; margin-bottom: 10px; text-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .driver-name { font-size: 24px; font-weight: 900; color: #1e293b; margin-bottom: 5px; }
+        .car-type { font-size: 14px; color: #0ea5e9; font-weight: 700; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; background: #e0f2fe; display: inline-block; padding: 4px 12px; border-radius: 20px; }
+        
+        .plate-container { margin-bottom: 25px; }
+        .plate-label { font-size: 11px; color: #94a3b8; font-weight: bold; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+        .plate-box { background: #facc15; border: 3px solid #111; border-radius: 8px; padding: 10px 20px; display: inline-block; font-size: 22px; font-weight: 900; font-family: 'Courier New', monospace; letter-spacing: 3px; color: #000; box-shadow: inset 0 2px 5px rgba(0,0,0,0.2); }
+        
+        .btn-call { display: flex; justify-content: center; align-items: center; gap: 10px; background: linear-gradient(135deg, #22c55e, #16a34a); color: white; text-decoration: none; padding: 14px; border-radius: 30px; font-size: 16px; font-weight: bold; box-shadow: 0 6px 15px rgba(34, 197, 94, 0.3); transition: transform 0.2s; }
+        .btn-call:active { transform: scale(0.95); }
+        
+        .empty-state { padding: 40px 20px; text-align: center; color: #64748b; }
+        .empty-icon { font-size: 50px; margin-bottom: 15px; opacity: 0.5; }
+        
+        .live-badge { display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 12px; color: #10b981; font-weight: bold; padding: 15px; background: #f8fafc; border-top: 1px solid #e2e8f0; }
+        .pulse { width: 8px; height: 8px; background: #10b981; border-radius: 50%; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 8px rgba(0,0,0,0); } 100% { box-shadow: 0 0 0 0 rgba(0,0,0,0); } }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="card" id="mainCard">
+        <div class="empty-state">
+            <div class="empty-icon">⏳</div>
+            <h3>Chargement en cours...</h3>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://dsmflhnjmnllvhkuepit.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function loadDriver() {
+            const params = new URLSearchParams(window.location.search);
+            const busName = params.get('bus');
+            const card = document.getElementById('mainCard');
+            
+            if(!busName) {
+                card.innerHTML = `<div class="empty-state"><div class="empty-icon">❌</div><h3>Navette non spécifiée</h3></div>`;
+                return;
+            }
+
+            try {
+                let { data: drivers, error } = await supabaseClient.from('chauffeurs_navette').select('*').eq('bus', busName);
+                
+                if (drivers && drivers.length > 0) {
+                    const d = drivers[0];
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <h2>🚌 Navette : ${busName}</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="avatar">👨‍✈️</div>
+                            <div class="driver-name">${d.nom_chauffeur}</div>
+                            <div class="car-type">🚘 ${d.type_voiture || 'Véhicule de Transport'}</div>
+                            
+                            <div class="plate-container">
+                                <div class="plate-label">Matricule du Véhicule</div>
+                                <div class="plate-box">${d.matricule}</div>
+                            </div>
+                            
+                            <a href="tel:${d.telephone}" class="btn-call">📞 Contacter le chauffeur</a>
+                        </div>
+                        <div class="live-badge">
+                            <div class="pulse"></div> Données synchronisées en direct
+                        </div>
+                    `;
+                } else {
+                    card.innerHTML = `
+                        <div class="card-header" style="background: #64748b; border-bottom: 4px solid #94a3b8;">
+                            <h2>🚌 Navette : ${busName}</h2>
+                        </div>
+                        <div class="empty-state">
+                            <div class="empty-icon">🕒</div>
+                            <h3 style="color:#334155; margin-bottom:10px;">Chauffeur non affecté</h3>
+                            <p style="font-size:14px; margin:0; line-height:1.5;">Le chauffeur pour cette navette sera affiché ici dès qu'il sera affecté <br><b>(Généralement le Jeudi)</b>.</p>
+                        </div>
+                        <div class="live-badge" style="color:#64748b;">
+                            <div class="pulse" style="background:#64748b;"></div> En attente de mise à jour...
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                card.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><h3>Erreur de connexion</h3></div>`;
+            }
+        }
+
+        loadDriver();
+        // الاستماع المباشر للتغيرات (Realtime)
+        supabaseClient.channel('public:chauffeurs_navette').on('postgres_changes', { event: '*', schema: 'public', table: 'chauffeurs_navette' }, payload => { loadDriver(); }).subscribe();
+    </script>
+</body>
+</html>
