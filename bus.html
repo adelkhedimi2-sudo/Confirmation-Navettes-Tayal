@@ -8,7 +8,7 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; }
         .container { max-width: 600px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
         
-        /* 1. تصميم العنوان الفخم (Header Card) */
+        /* تصميم العنوان الفخم (Header Card) */
         .header-card {
             background: linear-gradient(to right, #ffffff, #f8fafc);
             border-left: 6px solid #FF9800;
@@ -34,60 +34,7 @@
         }
         .header-title-text { color: #003366; margin: 0; font-size: 22px; font-weight: 800; letter-spacing: 0.5px; }
 
-        /* =========================================
-           تصميم البطاقة الذكية للسائق (Driver Card)
-           ========================================= */
-        .driver-card {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 25px;
-            box-shadow: 0 6px 15px rgba(0,0,0,0.05);
-            border-top: 4px solid #10b981; /* خط أخضر علوي يعبر عن التأكيد */
-            display: none; /* مخفية افتراضياً حتى نجد البيانات */
-            animation: fadeIn 0.5s ease-in-out;
-        }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        .driver-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .driver-name { font-size: 18px; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 8px; }
-        
-        .call-btn {
-            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-            color: white;
-            text-decoration: none;
-            padding: 8px 16px;
-            border-radius: 25px;
-            font-weight: bold;
-            font-size: 14px;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            box-shadow: 0 4px 10px rgba(34, 197, 94, 0.3);
-            transition: transform 0.2s;
-        }
-        .call-btn:active { transform: scale(0.95); }
-        
-        /* شكل لوحة ترقيم السيارات الجزائرية */
-        .license-plate-container { text-align: center; margin-top: 10px; }
-        .license-plate {
-            background: #facc15; /* خلفية صفراء */
-            color: #000;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 20px;
-            font-weight: 900;
-            padding: 8px 20px;
-            border-radius: 6px;
-            border: 2px solid #333;
-            display: inline-block;
-            letter-spacing: 3px;
-            box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
-        }
-        .plate-label { font-size: 12px; color: #64748b; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
-        /* ========================================= */
-
-        /* 2. تصميم العداد الاحترافي */
+        /* تصميم العداد الاحترافي */
         .counter-widget {
             background: #003366;
             background-image: radial-gradient(circle at top right, #1565C0, #003366);
@@ -141,18 +88,6 @@
             <div class="header-icon">🚌</div>
             <h1 class="header-title-text" id="busTitle">Chargement...</h1>
         </div>
-
-        <!-- بطاقة معلومات السائق (تظهر فقط إن توفرت البيانات) -->
-        <div id="driverInfoContainer" class="driver-card">
-            <div class="driver-header">
-                <div class="driver-name">👤 <span id="driverName">...</span></div>
-                <a href="#" id="driverPhoneBtn" class="call-btn">📞 Appeler</a>
-            </div>
-            <div class="license-plate-container">
-                <div class="plate-label">Matricule du Bus</div>
-                <div class="license-plate" id="driverMatricule">...</div>
-            </div>
-        </div>
         
         <!-- العداد الاحترافي -->
         <div class="counter-widget">
@@ -190,24 +125,7 @@
             document.getElementById('busTitle').innerText = busName;
 
             try {
-                // 1. جلب معلومات السائق إن وجدت
-                let resDriver = await fetch(`${SUPABASE_URL}/rest/v1/chauffeurs_navette?bus=eq.${encodeURIComponent(busName)}`, {
-                    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
-                });
-                let drivers = await resDriver.json();
-                
-                if (drivers && drivers.length > 0) {
-                    // إظهار البطاقة وملء البيانات
-                    document.getElementById('driverInfoContainer').style.display = 'block';
-                    document.getElementById('driverName').innerText = drivers[0].nom_chauffeur;
-                    document.getElementById('driverPhoneBtn').href = "tel:" + drivers[0].telephone;
-                    document.getElementById('driverMatricule').innerText = drivers[0].matricule;
-                } else {
-                    // إخفاء البطاقة إذا لم تكن هناك بيانات (أيام الأسبوع العادية)
-                    document.getElementById('driverInfoContainer').style.display = 'none';
-                }
-
-                // 2. جلب قائمة العمال
+                // جلب قائمة العمال والتأكيدات فقط
                 let res1 = await fetch(`${SUPABASE_URL}/rest/v1/tokens_navette?bus_employe=eq.${encodeURIComponent(busName)}`, {
                     headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
                 });
@@ -274,9 +192,8 @@
         
         loadBusStatus();
 
-        // تحديث حي لكل من الحجوزات ومعلومات السائق إذا تغيرت
+        // تحديث حي للحجوزات فقط
         supabaseClient.channel('public:navette_reponses').on('postgres_changes', { event: '*', schema: 'public', table: 'navette_reponses' }, payload => { loadBusStatus(); }).subscribe();
-        supabaseClient.channel('public:chauffeurs_navette').on('postgres_changes', { event: '*', schema: 'public', table: 'chauffeurs_navette' }, payload => { loadBusStatus(); }).subscribe();
     </script>
 </body>
 </html>
