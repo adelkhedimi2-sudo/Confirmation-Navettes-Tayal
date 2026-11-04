@@ -8,11 +8,12 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 90vh; }
         .card { background: #fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 400px; overflow: hidden; position: relative; }
         
-        .card-header { background: linear-gradient(135deg, #003366, #1565C0); color: white; padding: 20px; text-align: center; border-bottom: 4px solid #FF9800; }
+        .card-header { background: linear-gradient(135deg, #003366, #1565C0); color: white; padding: 20px; text-align: center; border-bottom: 4px solid #FF9800; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .stamp-logo-card { width: 65px; height: 65px; border-radius: 50%; object-fit: cover; border: 2px solid #FF9800; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
         .card-header h2 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: 1px; }
         
         .card-body { padding: 30px 20px; text-align: center; }
-        .avatar { font-size: 65px; margin-bottom: 10px; text-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .avatar { font-size: 55px; margin-bottom: 5px; text-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .driver-name { font-size: 24px; font-weight: 900; color: #1e293b; margin-bottom: 8px; }
         
         /* نوع السيارة */
@@ -21,7 +22,7 @@
         .info-container { margin-bottom: 20px; }
         .info-label { font-size: 11px; color: #94a3b8; font-weight: bold; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; }
         
-        /* خانة عرض رقم الهاتف (نص ثابت غير قابل للضغط أو الاتصال) */
+        /* خانة عرض رقم الهاتف (نص ثابت بدون اتصال) */
         .phone-display-box { 
             background: #f8fafc; 
             border: 2px solid #cbd5e1; 
@@ -45,7 +46,7 @@
         
         .live-badge { display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 12px; color: #10b981; font-weight: bold; padding: 15px; background: #f8fafc; border-top: 1px solid #e2e8f0; }
         .pulse { width: 8px; height: 8px; background: #10b981; border-radius: 50%; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 8px rgba(0,0,0,0); } 100% { box-shadow: 0 0 0 0 rgba(0,0,0,0); } }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -83,6 +84,7 @@
 
                     card.innerHTML = `
                         <div class="card-header">
+                            <img src="Stamp.png" alt="Adel Khedimi Mgx" class="stamp-logo-card">
                             <h2>🚌 Navette : ${busName}</h2>
                         </div>
                         <div class="card-body">
@@ -107,6 +109,7 @@
                 } else {
                     card.innerHTML = `
                         <div class="card-header" style="background: #64748b; border-bottom: 4px solid #94a3b8;">
+                            <img src="Stamp.png" alt="Adel Khedimi Mgx" class="stamp-logo-card">
                             <h2>🚌 Navette : ${busName}</h2>
                         </div>
                         <div class="empty-state">
