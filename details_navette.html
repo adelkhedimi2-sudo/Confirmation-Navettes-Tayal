@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Détails de la Navette - En Direct</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        
+        /* شريط الختم المستقل والجميل في الأعلى */
+        .brand-stamp-bar { text-align: center; background: linear-gradient(135deg, #001f3f, #003366); padding: 12px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,51,102,0.15); border: 1.5px solid #FF9800; }
+        .brand-stamp-bar img { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 2px solid #FF9800; box-shadow: 0 2px 8px rgba(0,0,0,0.3); display: inline-block; }
+
+        /* البطاقات العامة */
+        .card { background: #fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); margin-bottom: 25px; overflow: hidden; border: 1px solid #e2e8f0; }
+        .card-header { background: linear-gradient(135deg, #003366, #1565C0); color: white; padding: 15px; text-align: center; border-bottom: 4px solid #FF9800; }
+        .card-header h2 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: 1px; }
+        
+        /* قسم السائق */
+        .driver-body { padding: 25px 20px; text-align: center; }
+        .avatar { font-size: 55px; margin-bottom: 5px; }
+        .driver-name { font-size: 24px; font-weight: 900; color: #1e293b; margin-bottom: 8px; }
+        .car-type { font-size: 15px; color: #0284c7; font-weight: 800; margin-bottom: 25px; text-transform: uppercase; letter-spacing: 1px; background: #e0f2fe; display: inline-block; padding: 6px 16px; border-radius: 20px; border: 1px solid #bae6fd; }
+        
+        .info-container { margin-bottom: 20px; }
+        .info-label { font-size: 11px; color: #94a3b8; font-weight: bold; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; }
+        .phone-display-box { background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 10px; padding: 12px; font-size: 22px; font-weight: 900; font-family: 'Courier New', monospace; color: #0f172a; display: inline-block; letter-spacing: 3px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.03); width: 85%; }
+        .plate-box { background: #facc15; border: 3px solid #111; border-radius: 8px; padding: 8px 15px; display: inline-block; font-size: 20px; font-weight: 900; font-family: 'Courier New', monospace; letter-spacing: 2px; color: #000; box-shadow: inset 0 2px 5px rgba(0,0,0,0.2); }
+        
+        /* قسم الركاب */
+        .passengers-header { background: #f1f5f9; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #cbd5e1; }
+        .passengers-header h3 { margin: 0; color: #334155; font-size: 16px; font-weight: bold; }
+        .count-badge { background: #003366; color: white; padding: 5px 12px; border-radius: 20px; font-weight: bold; font-size: 14px; }
+        
+        .list-group { list-style: none; padding: 0; margin: 0; }
+        .list-item { padding: 16px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .list-item:last-child { border-bottom: none; }
+        .emp-name { font-weight: 700; color: #1e293b; font-size: 15px; flex-grow: 1; word-break: break-word; }
+        
+        .status-ok { color: #16a34a; font-weight: bold; background: #dcfce7; padding: 6px 12px; border-radius: 20px; font-size: 12px; border: 1px solid #bbf7d0; white-space: nowrap; }
+        .status-retour { color: #9333ea; font-weight: bold; background: #f3e5f5; padding: 6px 12px; border-radius: 20px; font-size: 12px; border: 1px solid #e9d5ff; white-space: nowrap; }
+        .status-wait { color: #ea580c; font-weight: bold; background: #ffedd5; padding: 6px 12px; border-radius: 20px; font-size: 12px; border: 1px solid #fed7aa; white-space: nowrap; }
+        .status-cancel { color: #dc2626; font-weight: bold; background: #fee2e2; padding: 6px 12px; border-radius: 20px; font-size: 12px; border: 1px solid #fecaca; white-space: nowrap; }
+
+        .empty-state { padding: 30px 20px; text-align: center; color: #64748b; }
+        .empty-icon { font-size: 40px; margin-bottom: 15px; opacity: 0.5; }
+        
+        .live-text { text-align: center; font-size: 13px; color: #64748b; margin-top: 10px; font-weight: bold; }
+        .live-indicator { display: inline-block; width: 10px; height: 10px; background-color: #10b981; border-radius: 50%; animation: pulse 1.5s infinite; margin-right: 5px; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 8px rgba(0,0,0,0); } 100% { box-shadow: 0 0 0 0 rgba(0,0,0,0); } }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="container">
+        
+        <!-- شريط الختم المستقل -->
+        <div class="brand-stamp-bar">
+            <img src="Stamp.png" alt="Adel Khedimi Mgx">
+        </div>
+
+        <!-- بطاقة معلومات السائق -->
+        <div class="card" id="driverCard">
+            <div class="empty-state"><div class="empty-icon">⏳</div><h3>Chargement...</h3></div>
+        </div>
+
+        <!-- بطاقة قائمة الركاب -->
+        <div class="card">
+            <div class="passengers-header">
+                <h3>👥 Liste des Passagers</h3>
+                <div class="count-badge" id="passengerCount">0 Confirmé(s)</div>
+            </div>
+            <ul class="list-group" id="passengersList">
+                <div class="empty-state"><div class="empty-icon">⏳</div><h3>Chargement...</h3></div>
+            </ul>
+        </div>
+
+        <div class="live-text"><span class="live-indicator"></span> Données synchronisées en direct</div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://dsmflhnjmnllvhkuepit.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWZsaG5qbW5sbHZoa3VlcGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDkzNDksImV4cCI6MjEwODU4NTM0OX0.lZTNCcKa_GW22fIPNGvDyH-sJ-zIyUUySiBtLS7tDmM";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function loadAllData() {
+            const params = new URLSearchParams(window.location.search);
+            const busName = params.get('bus');
+            
+            if(!busName) {
+                document.getElementById('driverCard').innerHTML = `<div class="empty-state"><div class="empty-icon">❌</div><h3>Erreur: Navette non spécifiée</h3></div>`;
+                document.getElementById('passengersList').innerHTML = "";
+                return;
+            }
+
+            try {
+                // 1. جلب معلومات السائق
+                let resDriver = await supabaseClient.from('chauffeurs_navette').select('*').eq('bus', busName);
+                let driverCard = document.getElementById('driverCard');
+                
+                if (resDriver.data && resDriver.data.length > 0) {
+                    let d = resDriver.data[0];
+                    driverCard.innerHTML = `
+                        <div class="card-header"><h2>🚌 Navette : ${busName}</h2></div>
+                        <div class="driver-body">
+                            <div class="avatar">👨‍✈️</div>
+                            <div class="driver-name">${d.nom_chauffeur}</div>
+                            <div class="car-type">🚘 ${d.type_voiture || 'Véhicule standard'}</div>
+                            <div class="info-container">
+                                <div class="info-label">Numéro de Téléphone</div>
+                                <div class="phone-display-box">${d.telephone || '---'}</div>
+                            </div>
+                            <div class="info-container">
+                                <div class="info-label">Matricule du Véhicule</div>
+                                <div class="plate-box">${d.matricule || '---'}</div>
+                            </div>
+                        </div>`;
+                } else {
+                    driverCard.innerHTML = `
+                        <div class="card-header" style="background: #64748b; border-bottom: 4px solid #94a3b8;"><h2>🚌 Navette : ${busName}</h2></div>
+                        <div class="empty-state">
+                            <div class="empty-icon">🕒</div>
+                            <h3 style="color:#334155; margin-bottom:10px;">Chauffeur non affecté</h3>
+                            <p style="font-size:14px; margin:0;">Il sera affiché ici dès qu'il sera affecté.</p>
+                        </div>`;
+                }
+
+                // 2. جلب قائمة الركاب والتأكيدات
+                let resTokens = await fetch(`${SUPABASE_URL}/rest/v1/tokens_navette?bus_employe=eq.${encodeURIComponent(busName)}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+                let tokens = await resTokens.json();
+
+                let resReponses = await fetch(`${SUPABASE_URL}/rest/v1/navette_reponses?select=email_employe,choix,created_at&order=created_at.desc`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+                let responses = await resReponses.json();
+
+                let userStatus = {};
+                responses.forEach(r => {
+                    if(r.email_employe && r.choix) {
+                        let emailKey = r.email_employe.trim().toLowerCase();
+                        if(!userStatus[emailKey]) { userStatus[emailKey] = r.choix.trim(); }
+                    }
+                });
+
+                let ul = document.getElementById('passengersList');
+                ul.innerHTML = "";
+
+                if(tokens.length === 0) {
+                    ul.innerHTML = "<div class="empty-state">Aucun employé trouvé.</div>";
+                    return;
+                }
+
+                tokens.sort((a, b) => (a.nom_employe || "").localeCompare(b.nom_employe || ""));
+                let totalConfirmes = 0;
+
+                tokens.forEach(emp => {
+                    let li = document.createElement('li');
+                    li.className = "list-item";
+                    let email = (emp.email || "").trim().toLowerCase();
+                    let choix = (userStatus[email] || "").toLowerCase();
+                    
+                    let nameDiv = document.createElement('div');
+                    nameDiv.className = "emp-name";
+                    nameDiv.innerText = emp.nom_employe || emp.email.split('@')[0];
+                    
+                    let statusDiv = document.createElement('div');
+                    if (!choix) { statusDiv.innerHTML = "⏳ En attente"; statusDiv.className = "status-wait"; } 
+                    else if (choix.includes("pas") || choix.includes("annul")) { statusDiv.innerHTML = "🚫 Pas de navette"; statusDiv.className = "status-cancel"; } 
+                    else if (choix.includes("retour") && !choix.includes("depart")) { statusDiv.innerHTML = "↩️ Retour Uniquement"; statusDiv.className = "status-retour"; totalConfirmes++;}
+                    else { statusDiv.innerHTML = "✔️ Confirmé"; statusDiv.className = "status-ok"; totalConfirmes++; }
+
+                    li.appendChild(nameDiv);
+                    li.appendChild(statusDiv);
+                    ul.appendChild(li);
+                });
+
+                document.getElementById('passengerCount').innerText = totalConfirmes + " Confirmé(s)";
+
+            } catch (error) { console.error(error); }
+        }
+        
+        loadAllData();
+        supabaseClient.channel('public:navette_reponses').on('postgres_changes', { event: '*', schema: 'public', table: 'navette_reponses' }, payload => { loadAllData(); }).subscribe();
+        supabaseClient.channel('public:chauffeurs_navette').on('postgres_changes', { event: '*', schema: 'public', table: 'chauffeurs_navette' }, payload => { loadAllData(); }).subscribe();
+    </script>
+</body>
+</html>
