@@ -6,29 +6,7 @@
     <title>Infos du Chauffeur - En Direct</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 90vh; }
-        .card-wrapper { width: 100%; max-width: 400px; }
-        
-        /* شريط الختم المستقل والجميل في الأعلى */
-        .brand-stamp-bar {
-            text-align: center;
-            background: linear-gradient(135deg, #001f3f, #003366);
-            padding: 12px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(0,51,102,0.15);
-            border: 1.5px solid #FF9800;
-        }
-        .brand-stamp-bar img {
-            width: 70px;
-            height: 70px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid #FF9800;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            display: inline-block;
-        }
-
-        .card { background: #fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; overflow: hidden; position: relative; }
+        .card { background: #fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 400px; overflow: hidden; position: relative; }
         
         .card-header { background: linear-gradient(135deg, #003366, #1565C0); color: white; padding: 20px; text-align: center; border-bottom: 4px solid #FF9800; }
         .card-header h2 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: 1px; }
@@ -55,22 +33,15 @@
         
         .live-badge { display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 12px; color: #10b981; font-weight: bold; padding: 15px; background: #f8fafc; border-top: 1px solid #e2e8f0; }
         .pulse { width: 8px; height: 8px; background: #10b981; border-radius: 50%; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 8px rgba(0,0,0,0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 8px rgba(0,0,0,0); } 100% { box-shadow: 0 0 0 0 rgba(0,0,0,0); } }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <div class="card-wrapper">
-        <!-- شريط الختم المستقل والجميل في الأعلى -->
-        <div class="brand-stamp-bar">
-            <img src="Stamp.png" alt="Adel Khedimi Mgx">
-        </div>
-
-        <div class="card" id="mainCard">
-            <div class="empty-state">
-                <div class="empty-icon">⏳</div>
-                <h3>Chargement en cours...</h3>
-            </div>
+    <div class="card" id="mainCard">
+        <div class="empty-state">
+            <div class="empty-icon">⏳</div>
+            <h3>Chargement en cours...</h3>
         </div>
     </div>
 
