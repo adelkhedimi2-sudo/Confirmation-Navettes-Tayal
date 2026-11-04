@@ -8,11 +8,31 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; }
         .container { max-width: 600px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
         
-        /* تصميم العنوان الفخم مع الختم */
+        /* شريط الختم المستقل والجميل في الأعلى */
+        .brand-stamp-bar {
+            text-align: center;
+            background: linear-gradient(135deg, #001f3f, #003366);
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,51,102,0.15);
+            border: 1.5px solid #FF9800;
+        }
+        .brand-stamp-bar img {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #FF9800;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            display: inline-block;
+        }
+
+        /* تصميم العنوان الفخم الأصلي */
         .header-card {
             background: linear-gradient(to right, #ffffff, #f8fafc);
             border-left: 6px solid #FF9800;
-            padding: 15px 20px;
+            padding: 20px 25px;
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.04);
             margin-bottom: 25px;
@@ -21,31 +41,17 @@
             gap: 15px;
             border: 1px solid #e2e8f0;
         }
-        .stamp-logo {
-            width: 55px;
-            height: 55px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid #FF9800;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
-            flex-shrink: 0;
+        .header-icon {
+            font-size: 28px; background: #fff7ed; width: 50px; height: 50px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(255, 152, 0, 0.2);
         }
-        .header-title-text { color: #003366; margin: 0; font-size: 20px; font-weight: 800; letter-spacing: 0.5px; }
+        .header-title-text { color: #003366; margin: 0; font-size: 22px; font-weight: 800; letter-spacing: 0.5px; }
 
         /* تصميم العداد الاحترافي */
         .counter-widget {
-            background: #003366;
-            background-image: radial-gradient(circle at top right, #1565C0, #003366);
-            border-radius: 16px;
-            padding: 25px 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 12px 24px rgba(0, 51, 102, 0.25);
-            margin-bottom: 25px;
-            position: relative;
-            overflow: hidden;
-            border: 1px solid #1e40af;
+            background: #003366; background-image: radial-gradient(circle at top right, #1565C0, #003366);
+            border-radius: 16px; padding: 25px 30px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 12px 24px rgba(0, 51, 102, 0.25); margin-bottom: 25px; position: relative; overflow: hidden; border: 1px solid #1e40af;
         }
         .counter-widget::after { content: '🚌'; position: absolute; right: -15px; top: -25px; font-size: 140px; opacity: 0.04; transform: rotate(-15deg); pointer-events: none; }
         .counter-info { z-index: 1; }
@@ -71,16 +77,22 @@
         
         .loading { text-align: center; color: #64748b; font-style: italic; margin: 20px 0; }
         .live-indicator { display: inline-block; width: 10px; height: 10px; background-color: #10b981; border-radius: 50%; animation: pulse 1.5s infinite; margin-right: 8px; vertical-align: middle; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 8px rgba(0,0,0,0); } 100% { box-shadow: 0 0 0 0 rgba(0,0,0,0); } }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 8px rgba(0,0,0,0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
         .live-text { text-align: center; font-size: 13px; color: #64748b; margin-bottom: 20px; font-weight: bold; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div class="container">
-        <!-- العنوان الفخم مع الختم -->
+        
+        <!-- شريط الختم المستقل والجميل في الأعلى -->
+        <div class="brand-stamp-bar">
+            <img src="Stamp.png" alt="Adel Khedimi Mgx">
+        </div>
+
+        <!-- العنوان الفخم الأصلي -->
         <div class="header-card">
-            <img src="Stamp.png" alt="Adel Khedimi Mgx" class="stamp-logo">
+            <div class="header-icon">🚌</div>
             <h1 class="header-title-text" id="busTitle">Chargement...</h1>
         </div>
         
